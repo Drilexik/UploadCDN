@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3001;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme";
 const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, "uploads");
+const PUBLIC_DIR = path.join(__dirname, "public");
 
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -17,12 +18,6 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 app.use(cors());
 app.use(express.json());
-
-// Serve the React admin UI
-const publicDir = path.join(__dirname, "public");
-if (fs.existsSync(publicDir)) {
-  app.use(express.static(publicDir));
-}
 
 function requireAuth(req, res, next) {
   const auth = req.headers["x-admin-password"];
@@ -33,9 +28,7 @@ function requireAuth(req, res, next) {
 }
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
   filename: (req, file, cb) => {
     const custom = req.body.filename || req.query.filename;
     if (custom) {
@@ -47,10 +40,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-});
+const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
 
 // ── API ────────────────────────────────────────────────────────
 
@@ -102,21 +92,30 @@ app.post("/api/files/:filename/rename", requireAuth, (req, res) => {
   res.json({ success: true, filename: newName, url: `${BASE_URL}/${newName}` });
 });
 
-// ── CDN: serve uploaded files at root ─────────────────────────
+// ── CDN: uploaded files served at root (e.g. /logo.png) ───────
 app.use(express.static(UPLOADS_DIR));
 
-// SPA fallback
-if (fs.existsSync(publicDir)) {
-  app.get("*", (req, res) => {
-    const filePath = path.join(UPLOADS_DIR, req.path.replace(/^\//, ""));
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-      res.sendFile(filePath);
-    } else {
-      res.sendFile(path.join(publicDir, "index.html"));
-    }
-  });
-}
+// ── Admin UI (React build) ─────────────────────────────────────
+app.use(express.static(PUBLIC_DIR));
+
+// ── SPA fallback: everything else → index.html ─────────────────
+app.get("*", (req, res) => {
+  // If it's an uploaded file, serve it
+  const filePath = path.join(UPLOADS_DIR, req.path.replace(/^\//, ""));
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    return res.sendFile(filePath);
+  }
+  // Otherwise serve the React SPA
+  const indexPath = path.join(PUBLIC_DIR, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).send("Not found");
+});
 
 app.listen(PORT, () => {
-  console.log(`CDN running on :${PORT} | uploads: ${UPLOADS_DIR} | base: ${BASE_URL}`);
+  console.log(`CDN running on :${PORT}`);
+  console.log(`Uploads: ${UPLOADS_DIR}`);
+  console.log(`Public dir exists: ${fs.existsSync(PUBLIC_DIR)}`);
+  console.log(`Base URL: ${BASE_URL}`);
 });
