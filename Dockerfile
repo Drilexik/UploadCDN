@@ -22,6 +22,10 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 3000
 
+<<<<<<< HEAD
+=======
+ENV NODE_ENV=production
+>>>>>>> origin/main
 ENV PORT=3000
 ENV UPLOADS_DIR=/app/uploads
 
