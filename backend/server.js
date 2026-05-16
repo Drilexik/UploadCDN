@@ -19,6 +19,12 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 app.use(cors());
 app.use(express.json());
 
+// ── Debug: log every single request ───────────────────────────
+app.use((req, res, next) => {
+  console.log(`[REQ] ${req.method} ${req.path} | host: ${req.hostname} | ua: ${(req.headers["user-agent"] || "").slice(0, 40)}`);
+  next();
+});
+
 function requireAuth(req, res, next) {
   const auth = req.headers["x-admin-password"];
   if (auth !== ADMIN_PASSWORD) {
@@ -92,30 +98,62 @@ app.post("/api/files/:filename/rename", requireAuth, (req, res) => {
   res.json({ success: true, filename: newName, url: `${BASE_URL}/${newName}` });
 });
 
-// ── CDN: uploaded files served at root (e.g. /logo.png) ───────
-app.use(express.static(UPLOADS_DIR));
+// ── CDN: uploaded files served at root ────────────────────────
+app.use(express.static(UPLOADS_DIR, { index: false }));
 
 // ── Admin UI (React build) ─────────────────────────────────────
-app.use(express.static(PUBLIC_DIR));
+app.use(express.static(PUBLIC_DIR, { index: false }));
 
-// ── SPA fallback: everything else → index.html ─────────────────
-app.get("*", (req, res) => {
-  // If it's an uploaded file, serve it
-  const filePath = path.join(UPLOADS_DIR, req.path.replace(/^\//, ""));
-  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-    return res.sendFile(filePath);
-  }
-  // Otherwise serve the React SPA
+// ── Explicit root → index.html ─────────────────────────────────
+app.get("/", (req, res) => {
   const indexPath = path.join(PUBLIC_DIR, "index.html");
+  console.log(`[ROOT] serving index.html, exists: ${fs.existsSync(indexPath)}`);
   if (fs.existsSync(indexPath)) {
     return res.sendFile(indexPath);
   }
-  res.status(404).send("Not found");
+  res.status(200).send(`
+    <html><body style="background:#0a0a0b;color:#e8e8f0;font-family:monospace;padding:2rem">
+      <h2>CDN is running ✓</h2>
+      <p>Public dir: ${PUBLIC_DIR}</p>
+      <p>index.html exists: ${fs.existsSync(indexPath)}</p>
+      <p>Public dir contents: ${fs.existsSync(PUBLIC_DIR) ? fs.readdirSync(PUBLIC_DIR).join(", ") : "DIR NOT FOUND"}</p>
+    </body></html>
+  `);
+});
+
+// ── SPA fallback ───────────────────────────────────────────────
+app.get("*", (req, res) => {
+  // Check if it's an uploaded file
+  const filePath = path.join(UPLOADS_DIR, req.path.replace(/^\//, ""));
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    console.log(`[CDN] serving uploaded file: ${filePath}`);
+    return res.sendFile(filePath);
+  }
+  // SPA fallback
+  const indexPath = path.join(PUBLIC_DIR, "index.html");
+  console.log(`[SPA] fallback for ${req.path}, index exists: ${fs.existsSync(indexPath)}`);
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).send(`
+    <html><body style="background:#0a0a0b;color:#f87171;font-family:monospace;padding:2rem">
+      <h2>404 — index.html not found</h2>
+      <p>PUBLIC_DIR: ${PUBLIC_DIR}</p>
+      <p>Dir exists: ${fs.existsSync(PUBLIC_DIR)}</p>
+      <p>Contents: ${fs.existsSync(PUBLIC_DIR) ? fs.readdirSync(PUBLIC_DIR).join(", ") : "N/A"}</p>
+      <p>__dirname: ${__dirname}</p>
+    </body></html>
+  `);
 });
 
 app.listen(PORT, () => {
   console.log(`CDN running on :${PORT}`);
   console.log(`Uploads: ${UPLOADS_DIR}`);
+  console.log(`Public dir: ${PUBLIC_DIR}`);
   console.log(`Public dir exists: ${fs.existsSync(PUBLIC_DIR)}`);
+  console.log(`index.html exists: ${fs.existsSync(path.join(PUBLIC_DIR, "index.html"))}`);
+  if (fs.existsSync(PUBLIC_DIR)) {
+    console.log(`Public dir contents: ${fs.readdirSync(PUBLIC_DIR).join(", ")}`);
+  }
   console.log(`Base URL: ${BASE_URL}`);
 });
