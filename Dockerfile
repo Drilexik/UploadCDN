@@ -21,7 +21,7 @@ RUN mkdir -p /app/uploads
 EXPOSE 3001
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 ENV UPLOADS_DIR=/app/uploads
 
 CMD ["node", "server.js"]
