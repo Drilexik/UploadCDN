@@ -1,51 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Upload, Lock, LogOut, Copy, Trash2, Link, RefreshCw,
-  CheckCheck, FileImage, File, AlertCircle, X, Edit3, Check
+  Upload, Lock, LogOut, Copy, Trash2, Link2, RefreshCw,
+  CheckCheck, File, AlertCircle, Edit3, Check, X,
+  Zap, Shield, Globe, ArrowRight, ChevronRight
 } from "lucide-react";
 
 const API = "/api";
 
-function formatBytes(bytes) {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+function formatBytes(b) {
+  if (b < 1024) return b + " B";
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
+  return (b / (1024 * 1024)).toFixed(1) + " MB";
 }
-
 function timeAgo(date) {
-  const d = new Date(date);
-  const diff = (Date.now() - d) / 1000;
-  if (diff < 60) return "just now";
-  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-  return Math.floor(diff / 86400) + "d ago";
+  const s = (Date.now() - new Date(date)) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return Math.floor(s / 60) + "m ago";
+  if (s < 86400) return Math.floor(s / 3600) + "h ago";
+  return Math.floor(s / 86400) + "d ago";
 }
+function isImage(f) { return /\.(png|jpg|jpeg|gif|webp|svg|ico|avif)$/i.test(f); }
 
-function isImage(filename) {
-  return /\.(png|jpg|jpeg|gif|webp|svg|ico|avif)$/i.test(filename);
-}
-
-function CopyBtn({ text }) {
+function CopyBtn({ text, small }) {
   const [copied, setCopied] = useState(false);
-  const copy = (e) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
   return (
     <button
-      onClick={copy}
-      title="Copy URL"
-      className="flex items-center gap-1 px-2 py-1 rounded text-xs transition-all"
+      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
+      className={`flex items-center gap-1 rounded-lg font-mono transition-all ${small ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-xs"}`}
       style={{
-        background: copied ? "rgba(52,211,153,0.12)" : "rgba(79,142,255,0.08)",
-        color: copied ? "var(--green)" : "var(--accent)",
-        border: `1px solid ${copied ? "rgba(52,211,153,0.25)" : "rgba(79,142,255,0.2)"}`,
+        background: copied ? "rgba(52,211,153,0.12)" : "rgba(139,92,246,0.12)",
+        color: copied ? "var(--green)" : "var(--accent2)",
+        border: `1px solid ${copied ? "rgba(52,211,153,0.3)" : "rgba(139,92,246,0.25)"}`,
       }}
     >
-      {copied ? <CheckCheck size={12} /> : <Copy size={12} />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? <CheckCheck size={11} /> : <Copy size={11} />}
+      {copied ? "Copied!" : "Copy"}
     </button>
   );
 }
@@ -54,7 +43,6 @@ function FileCard({ file, onDelete, onRename }) {
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(file.filename);
   const [deleting, setDeleting] = useState(false);
-  const inputRef = useRef(null);
 
   const handleRename = async () => {
     if (newName === file.filename || !newName.trim()) { setRenaming(false); return; }
@@ -62,136 +50,254 @@ function FileCard({ file, onDelete, onRename }) {
     setRenaming(false);
   };
 
-  const handleDelete = async () => {
-    setDeleting(true);
-    await onDelete(file.filename);
-  };
-
   return (
-    <div
-      className="fade-up rounded-xl p-4 flex flex-col gap-3 group"
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        transition: "border-color 0.2s",
-      }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(79,142,255,0.3)"}
-      onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
-    >
+    <div className="card fade-up flex flex-col gap-3 p-4 group">
       {/* Preview */}
-      <div
-        className="w-full h-32 rounded-lg flex items-center justify-center overflow-hidden relative"
-        style={{ background: "var(--surface2)" }}
-      >
+      <div className="w-full h-28 rounded-xl flex items-center justify-center overflow-hidden relative"
+        style={{ background: "var(--surface2)" }}>
         {isImage(file.filename) ? (
-          <img
-            src={file.url}
-            alt={file.filename}
-            className="max-h-full max-w-full object-contain"
-            onError={e => { e.target.style.display = "none"; }}
-          />
+          <img src={file.url} alt={file.filename} className="max-h-full max-w-full object-contain" onError={e => e.target.style.display = "none"} />
         ) : (
-          <File size={32} style={{ color: "var(--muted)" }} />
+          <File size={28} style={{ color: "var(--muted)" }} />
         )}
-        <div
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ transition: "opacity 0.2s" }}
-        >
-          <a
-            href={file.url}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center w-7 h-7 rounded-lg"
-            style={{ background: "rgba(0,0,0,0.6)", color: "var(--text)" }}
-          >
-            <Link size={13} />
-          </a>
-        </div>
+        <a href={file.url} target="_blank" rel="noreferrer"
+          className="absolute top-2 right-2 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: "rgba(0,0,0,0.7)", color: "var(--accent2)" }}>
+          <Link2 size={12} />
+        </a>
       </div>
 
-      {/* Filename */}
-      <div className="flex items-center gap-2">
-        {renaming ? (
-          <div className="flex items-center gap-1 flex-1">
-            <input
-              ref={inputRef}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
-              autoFocus
-              className="flex-1 text-xs font-mono px-2 py-1 rounded-lg outline-none"
-              style={{
-                background: "var(--surface2)",
-                border: "1px solid var(--accent)",
-                color: "var(--text)",
-              }}
-            />
-            <button onClick={handleRename} style={{ color: "var(--green)" }}><Check size={14} /></button>
-            <button onClick={() => { setRenaming(false); setNewName(file.filename); }} style={{ color: "var(--muted)" }}><X size={14} /></button>
-          </div>
-        ) : (
-          <span
-            className="text-xs font-mono flex-1 truncate"
-            style={{ color: "var(--text)" }}
-            title={file.filename}
-          >
-            {file.filename}
-          </span>
-        )}
-        {!renaming && (
-          <button
-            onClick={() => setRenaming(true)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Rename"
-            style={{ color: "var(--muted)" }}
-          >
-            <Edit3 size={13} />
+      {/* Name */}
+      {renaming ? (
+        <div className="flex items-center gap-1">
+          <input value={newName} onChange={e => setNewName(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
+            autoFocus className="flex-1 text-xs font-mono px-2 py-1 rounded-lg outline-none"
+            style={{ background: "var(--surface3)", border: "1px solid var(--accent)", color: "var(--text)" }} />
+          <button onClick={handleRename} style={{ color: "var(--green)" }}><Check size={13} /></button>
+          <button onClick={() => { setRenaming(false); setNewName(file.filename); }} style={{ color: "var(--muted)" }}><X size={13} /></button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text2)" }} title={file.filename}>{file.filename}</span>
+          <button onClick={() => setRenaming(true)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: "var(--muted)" }}>
+            <Edit3 size={12} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* URL */}
-      <div
-        className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-        style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}
-      >
-        <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--muted)" }}>
-          {file.url}
-        </span>
-        <CopyBtn text={file.url} />
+      <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
+        style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+        <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--muted)" }}>{file.url}</span>
+        <CopyBtn text={file.url} small />
       </div>
 
-      {/* Meta + delete */}
+      {/* Footer */}
       <div className="flex items-center justify-between">
-        <span className="text-xs" style={{ color: "var(--muted)" }}>
-          {formatBytes(file.size)} · {timeAgo(file.mtime)}
-        </span>
-        <button
-          onClick={handleDelete}
+        <span className="text-xs" style={{ color: "var(--muted)" }}>{formatBytes(file.size)} · {timeAgo(file.mtime)}</span>
+        <button onClick={async () => { setDeleting(true); await onDelete(file.filename); }}
           disabled={deleting}
           className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all"
-          style={{
-            background: "rgba(248,113,113,0.08)",
-            color: "var(--red)",
-            border: "1px solid rgba(248,113,113,0.15)",
-          }}
-        >
-          {deleting ? <RefreshCw size={12} className="spinner" /> : <Trash2 size={12} />}
-          Delete
+          style={{ background: "rgba(248,113,113,0.08)", color: "var(--red)", border: "1px solid rgba(248,113,113,0.15)" }}>
+          {deleting ? <RefreshCw size={11} className="spinner" /> : <Trash2 size={11} />} Delete
         </button>
       </div>
     </div>
   );
 }
 
-export default function App() {
-  const [password, setPassword] = useState(() => localStorage.getItem("cdn_pw") || "");
-  const [authed, setAuthed] = useState(false);
-  const [authError, setAuthError] = useState("");
-  const [files, setFiles] = useState([]);
+// ── Landing Page ───────────────────────────────────────────────
+function Landing({ onEnter }) {
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
+      {/* Grid bg */}
+      <div className="fixed inset-0 grid-bg pointer-events-none" />
+      {/* Purple glow orbs */}
+      <div className="fixed pointer-events-none" style={{
+        top: "-15%", left: "50%", transform: "translateX(-50%)",
+        width: 700, height: 700, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)",
+      }} />
+      <div className="fixed pointer-events-none" style={{
+        bottom: "-10%", right: "-10%",
+        width: 500, height: 500, borderRadius: "50%",
+        background: "radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%)",
+      }} />
+
+      {/* Nav */}
+      <nav className="relative z-10 flex items-center justify-between px-8 py-5">
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Drilex" className="w-8 h-8 rounded-lg" />
+          <span className="font-mono font-bold text-sm tracking-tight" style={{ color: "var(--text)" }}>
+            drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
+          </span>
+        </div>
+        <button onClick={onEnter}
+          className="flex items-center gap-2 text-sm font-mono px-4 py-2 rounded-xl transition-all"
+          style={{ background: "var(--surface2)", color: "var(--accent2)", border: "1px solid var(--border2)" }}>
+          <Lock size={13} /> Admin
+        </button>
+      </nav>
+
+      {/* Hero */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center gap-10 py-20">
+        {/* Logo */}
+        <div className="float" style={{ filter: "drop-shadow(0 0 40px rgba(139,92,246,0.5))" }}>
+          <img src="/logo.png" alt="Drilex" className="w-24 h-24 rounded-2xl" style={{
+            boxShadow: "0 0 60px rgba(139,92,246,0.4), 0 0 120px rgba(139,92,246,0.15)",
+          }} />
+        </div>
+
+        <div className="flex flex-col items-center gap-4 max-w-2xl">
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono"
+            style={{ background: "var(--accent-dim)", color: "var(--accent2)", border: "1px solid rgba(139,92,246,0.25)" }}>
+            <Zap size={11} /> Static · Fast · Permanent
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-none">
+            <span style={{ color: "var(--text)" }}>Your personal</span>
+            <br />
+            <span className="shimmer-text">CDN platform</span>
+          </h1>
+
+          <p className="text-lg" style={{ color: "var(--text2)", maxWidth: 480 }}>
+            Upload logos, favicons, images and assets. Get a permanent static URL instantly.
+            No expiry. No fuss.
+          </p>
+        </div>
+
+        {/* URL example */}
+        <div className="flex items-center gap-0 rounded-2xl overflow-hidden text-sm font-mono"
+          style={{ background: "var(--surface)", border: "1px solid var(--border2)", boxShadow: "0 0 40px rgba(139,92,246,0.12)" }}>
+          <div className="px-5 py-3.5 flex items-center gap-2" style={{ color: "var(--muted)", borderRight: "1px solid var(--border)" }}>
+            <Globe size={14} style={{ color: "var(--accent)" }} />
+            <span style={{ color: "var(--accent2)" }}>upload.drilex.cz</span>
+            <span style={{ color: "var(--muted)" }}>/</span>
+          </div>
+          <div className="px-5 py-3.5" style={{ color: "var(--text)" }}>logo.png</div>
+          <div className="px-4 py-3.5" style={{ borderLeft: "1px solid var(--border)" }}>
+            <CopyBtn text="https://upload.drilex.cz/logo.png" small />
+          </div>
+        </div>
+
+        {/* CTA */}
+        <button onClick={onEnter}
+          className="glow-btn flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-semibold"
+          style={{
+            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
+            color: "#fff",
+          }}>
+          <Upload size={18} /> Upload Files
+          <ArrowRight size={16} />
+        </button>
+
+        {/* Features */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+          {[
+            { icon: Zap, title: "Instant URLs", desc: "Choose your own filename and get a link immediately" },
+            { icon: Shield, title: "Admin Protected", desc: "Password-secured uploads, public read access" },
+            { icon: Globe, title: "Permanent Links", desc: "Static URLs that never expire or change" },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="card p-5 flex flex-col gap-2 text-left">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "var(--accent-dim)", color: "var(--accent2)" }}>
+                <Icon size={15} />
+              </div>
+              <p className="font-semibold text-sm" style={{ color: "var(--text)" }}>{title}</p>
+              <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{desc}</p>
+            </div>
+          ))}
+        </div>
+      </main>
+
+      <footer className="relative z-10 text-center py-6 text-xs font-mono" style={{ color: "var(--muted)" }}>
+        upload.drilex.cz · self-hosted CDN
+      </footer>
+    </div>
+  );
+}
+
+// ── Login ──────────────────────────────────────────────────────
+function Login({ onSuccess }) {
+  const [pw, setPw] = useState(() => localStorage.getItem("cdn_pw") || "");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Upload state
+  const tryLogin = async (e) => {
+    e.preventDefault();
+    setError(""); setLoading(true);
+    try {
+      const res = await fetch(`${API}/files`, { headers: { "x-admin-password": pw } });
+      if (!res.ok) throw new Error();
+      const files = await res.json();
+      localStorage.setItem("cdn_pw", pw);
+      onSuccess(pw, files);
+    } catch {
+      setError("Wrong password.");
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    if (pw) tryLogin({ preventDefault: () => {} });
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--bg)" }}>
+      <div className="fixed inset-0 grid-bg pointer-events-none" />
+      <div className="fixed pointer-events-none inset-0 flex items-center justify-center">
+        <div style={{
+          width: 600, height: 600, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%)",
+        }} />
+      </div>
+
+      <div className="relative w-full max-w-sm fade-up">
+        <div className="flex flex-col items-center mb-8 gap-4">
+          <img src="/logo.png" alt="Drilex" className="w-16 h-16 rounded-2xl float"
+            style={{ boxShadow: "0 0 40px rgba(139,92,246,0.5)" }} />
+          <div className="text-center">
+            <h1 className="font-mono font-bold text-xl" style={{ color: "var(--text)" }}>
+              drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>Admin access required</p>
+          </div>
+        </div>
+
+        <form onSubmit={tryLogin} className="card p-6 flex flex-col gap-4">
+          <div className="relative">
+            <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }} />
+            <input type="password" value={pw} onChange={e => setPw(e.target.value)}
+              placeholder="Enter admin password"
+              className="w-full pl-9 pr-4 py-3 rounded-xl text-sm font-mono outline-none transition-all"
+              style={{ background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text)" }}
+              onFocus={e => e.target.style.borderColor = "var(--accent)"}
+              onBlur={e => e.target.style.borderColor = "var(--border)"}
+              autoFocus />
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 text-sm" style={{ color: "var(--red)" }}>
+              <AlertCircle size={13} /> {error}
+            </div>
+          )}
+          <button type="submit" disabled={!pw || loading}
+            className="glow-btn w-full py-3 rounded-xl text-sm font-mono font-semibold"
+            style={{
+              background: "linear-gradient(135deg, var(--accent), var(--accent2))",
+              color: "#fff", opacity: !pw || loading ? 0.5 : 1,
+            }}>
+            {loading ? "Checking…" : "Enter CDN →"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin Panel ────────────────────────────────────────────────
+function Admin({ password, initialFiles, onLogout }) {
+  const [files, setFiles] = useState(initialFiles);
+  const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
@@ -200,402 +306,193 @@ export default function App() {
   const [pendingFile, setPendingFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const fetchFiles = useCallback(async (pw) => {
+  const fetchFiles = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/files`, { headers: { "x-admin-password": pw } });
-      if (!res.ok) throw new Error("Unauthorized");
-      const data = await res.json();
-      setFiles(data);
-      setAuthed(true);
-    } catch {
-      setAuthError("Wrong password.");
-      setAuthed(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const res = await fetch(`${API}/files`, { headers: { "x-admin-password": password } });
+      setFiles(await res.json());
+    } finally { setLoading(false); }
+  }, [password]);
 
-  const login = async (e) => {
-    e.preventDefault();
-    setAuthError("");
-    localStorage.setItem("cdn_pw", password);
-    await fetchFiles(password);
-  };
-
-  const logout = () => {
-    setAuthed(false);
-    setPassword("");
-    localStorage.removeItem("cdn_pw");
-  };
-
-  useEffect(() => {
-    const saved = localStorage.getItem("cdn_pw");
-    if (saved) fetchFiles(saved);
-  }, [fetchFiles]);
-
-  const doUpload = async (file, name) => {
-    setUploading(true);
-    setUploadError("");
-    setUploadResult(null);
+  const doUpload = async () => {
+    if (!pendingFile) return;
+    setUploading(true); setUploadError(""); setUploadResult(null);
     const fd = new FormData();
-    fd.append("file", file);
-    if (name) fd.append("filename", name);
+    fd.append("file", pendingFile);
+    if (customName) fd.append("filename", customName);
     try {
-      const res = await fetch(`${API}/upload`, {
-        method: "POST",
-        headers: { "x-admin-password": password },
-        body: fd,
-      });
+      const res = await fetch(`${API}/upload`, { method: "POST", headers: { "x-admin-password": password }, body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setUploadResult(data);
-      setPendingFile(null);
-      setCustomName("");
-      await fetchFiles(password);
-    } catch (err) {
-      setUploadError(err.message);
-    } finally {
-      setUploading(false);
-    }
+      setPendingFile(null); setCustomName("");
+      await fetchFiles();
+    } catch (err) { setUploadError(err.message); }
+    finally { setUploading(false); }
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) { setPendingFile(file); setCustomName(file.name); }
-  };
+  const handleDrop = e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) { setPendingFile(f); setCustomName(f.name); } };
+  const handleInput = e => { const f = e.target.files[0]; if (f) { setPendingFile(f); setCustomName(f.name); } };
 
-  const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    if (file) { setPendingFile(file); setCustomName(file.name); }
-  };
-
-  const deleteFile = async (filename) => {
-    await fetch(`${API}/files/${encodeURIComponent(filename)}`, {
-      method: "DELETE",
-      headers: { "x-admin-password": password },
-    });
+  const deleteFile = async filename => {
+    await fetch(`${API}/files/${encodeURIComponent(filename)}`, { method: "DELETE", headers: { "x-admin-password": password } });
     setFiles(f => f.filter(x => x.filename !== filename));
   };
 
-  const renameFile = async (oldName, newName) => {
-    const res = await fetch(`${API}/files/${encodeURIComponent(oldName)}/rename`, {
-      method: "POST",
-      headers: { "x-admin-password": password, "Content-Type": "application/json" },
-      body: JSON.stringify({ newFilename: newName }),
+  const renameFile = async (old_, new_) => {
+    const res = await fetch(`${API}/files/${encodeURIComponent(old_)}/rename`, {
+      method: "POST", headers: { "x-admin-password": password, "Content-Type": "application/json" },
+      body: JSON.stringify({ newFilename: new_ }),
     });
-    if (res.ok) await fetchFiles(password);
+    if (res.ok) await fetchFiles();
   };
 
-  // LOGIN SCREEN
-  if (!authed) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "var(--bg)" }}>
-        {/* Background grid */}
-        <div className="fixed inset-0 opacity-5" style={{
-          backgroundImage: "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }} />
-
-        <div className="relative w-full max-w-sm fade-up">
-          {/* Logo */}
-          <div className="flex flex-col items-center mb-8">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{
-                background: "linear-gradient(135deg, rgba(79,142,255,0.2), rgba(167,139,250,0.2))",
-                border: "1px solid rgba(79,142,255,0.3)",
-                boxShadow: "0 0 40px rgba(79,142,255,0.15)",
-              }}
-            >
-              <Upload size={24} style={{ color: "var(--accent)" }} />
-            </div>
-            <h1 className="text-xl font-mono font-semibold" style={{ color: "var(--text)" }}>
-              drilex<span style={{ color: "var(--accent)" }}>/cdn</span>
-            </h1>
-            <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>upload.drilex.cz</p>
-          </div>
-
-          <form onSubmit={login}>
-            <div
-              className="rounded-2xl p-6 flex flex-col gap-4"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
-              <label className="text-xs font-mono uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-                Admin Password
-              </label>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }} />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  className="w-full pl-9 pr-4 py-3 rounded-xl text-sm font-mono outline-none transition-all"
-                  style={{
-                    background: "var(--surface2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text)",
-                  }}
-                  onFocus={e => e.target.style.borderColor = "var(--accent)"}
-                  onBlur={e => e.target.style.borderColor = "var(--border)"}
-                  autoFocus
-                />
-              </div>
-              {authError && (
-                <div className="flex items-center gap-2 text-sm" style={{ color: "var(--red)" }}>
-                  <AlertCircle size={14} /> {authError}
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={!password || loading}
-                className="w-full py-3 rounded-xl text-sm font-mono font-semibold transition-all"
-                style={{
-                  background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-                  color: "#fff",
-                  opacity: !password || loading ? 0.5 : 1,
-                }}
-              >
-                {loading ? "Verifying..." : "Enter CDN"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // MAIN PANEL
   return (
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
-      {/* Background grid */}
-      <div className="fixed inset-0 opacity-[0.03] pointer-events-none" style={{
-        backgroundImage: "linear-gradient(var(--text) 1px, transparent 1px), linear-gradient(90deg, var(--text) 1px, transparent 1px)",
-        backgroundSize: "40px 40px",
-      }} />
+      <div className="fixed inset-0 grid-bg pointer-events-none" />
 
       {/* Header */}
-      <header
-        className="sticky top-0 z-50 px-6 py-4 flex items-center justify-between"
-        style={{
-          background: "rgba(10,10,11,0.85)",
-          borderBottom: "1px solid var(--border)",
-          backdropFilter: "blur(12px)",
-        }}
-      >
+      <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
+        style={{ background: "rgba(8,7,15,0.85)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(16px)" }}>
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, rgba(79,142,255,0.2), rgba(167,139,250,0.2))",
-              border: "1px solid rgba(79,142,255,0.3)",
-            }}
-          >
-            <Upload size={15} style={{ color: "var(--accent)" }} />
-          </div>
-          <span className="font-mono font-semibold text-sm" style={{ color: "var(--text)" }}>
-            drilex<span style={{ color: "var(--accent)" }}>/cdn</span>
+          <img src="/logo.png" alt="Drilex" className="w-8 h-8 rounded-lg" />
+          <span className="font-mono font-bold text-sm" style={{ color: "var(--text)" }}>
+            drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
           </span>
-          <span
-            className="hidden sm:block text-xs font-mono px-2 py-0.5 rounded"
-            style={{ background: "var(--surface2)", color: "var(--muted)", border: "1px solid var(--border)" }}
-          >
+          <span className="text-xs font-mono px-2 py-0.5 rounded-lg"
+            style={{ background: "var(--accent-dim)", color: "var(--accent2)", border: "1px solid rgba(139,92,246,0.2)" }}>
             {files.length} file{files.length !== 1 ? "s" : ""}
           </span>
         </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => fetchFiles(password)}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: "var(--muted)" }}
-            title="Refresh"
-          >
+        <div className="flex items-center gap-2">
+          <button onClick={fetchFiles} className="p-2 rounded-lg" style={{ color: "var(--muted)" }} title="Refresh">
             <RefreshCw size={15} className={loading ? "spinner" : ""} />
           </button>
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 text-xs font-mono px-3 py-2 rounded-lg transition-all"
-            style={{
-              background: "rgba(248,113,113,0.08)",
-              color: "var(--red)",
-              border: "1px solid rgba(248,113,113,0.15)",
-            }}
-          >
+          <button onClick={onLogout}
+            className="flex items-center gap-1.5 text-xs font-mono px-3 py-2 rounded-xl"
+            style={{ background: "rgba(248,113,113,0.08)", color: "var(--red)", border: "1px solid rgba(248,113,113,0.15)" }}>
             <LogOut size={13} /> Logout
           </button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-8 flex flex-col gap-8">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 py-8 flex flex-col gap-8">
 
-        {/* Upload zone */}
-        <section className="fade-up">
+        {/* Upload card */}
+        <div className="card p-6 flex flex-col gap-5"
+          style={{ boxShadow: "0 0 60px rgba(139,92,246,0.08)" }}>
+          <div className="flex items-center gap-2">
+            <Upload size={15} style={{ color: "var(--accent)" }} />
+            <h2 className="font-semibold text-sm" style={{ color: "var(--text)" }}>Upload Asset</h2>
+          </div>
+
+          {/* Drop zone */}
           <div
-            className="rounded-2xl p-6 flex flex-col gap-5"
-            style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-          >
-            <div className="flex items-center gap-2">
-              <FileImage size={16} style={{ color: "var(--accent)" }} />
-              <h2 className="font-mono font-semibold text-sm" style={{ color: "var(--text)" }}>Upload File</h2>
-            </div>
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className="rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all"
+            style={{
+              minHeight: 160,
+              border: `2px dashed ${dragOver ? "var(--accent)" : pendingFile ? "rgba(52,211,153,0.5)" : "var(--border2)"}`,
+              background: dragOver ? "rgba(139,92,246,0.07)" : pendingFile ? "rgba(52,211,153,0.04)" : "var(--surface2)",
+              transition: "all 0.2s",
+            }}>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleInput} />
+            {pendingFile ? (
+              <>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: "rgba(52,211,153,0.15)", color: "var(--green)" }}>
+                  <Check size={22} />
+                </div>
+                <p className="text-sm font-mono" style={{ color: "var(--text)" }}>{pendingFile.name}</p>
+                <p className="text-xs" style={{ color: "var(--muted)" }}>{formatBytes(pendingFile.size)}</p>
+              </>
+            ) : (
+              <>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                  style={{ background: "var(--accent-dim)", color: "var(--accent2)" }}>
+                  <Upload size={22} />
+                </div>
+                <p className="text-sm" style={{ color: "var(--text2)" }}>Drop file here or <span style={{ color: "var(--accent2)" }}>browse</span></p>
+                <p className="text-xs" style={{ color: "var(--muted)" }}>Any file · max 50 MB</p>
+              </>
+            )}
+          </div>
 
-            {/* Drop zone */}
-            <div
-              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="relative rounded-xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all"
-              style={{
-                minHeight: 160,
-                border: `2px dashed ${dragOver ? "var(--accent)" : pendingFile ? "rgba(52,211,153,0.4)" : "var(--border)"}`,
-                background: dragOver
-                  ? "rgba(79,142,255,0.06)"
-                  : pendingFile
-                  ? "rgba(52,211,153,0.04)"
-                  : "var(--surface2)",
-                animation: dragOver ? "pulse-glow 1s ease infinite" : "none",
-              }}
-            >
-              <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileInput} />
-              {pendingFile ? (
-                <>
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{ background: "rgba(52,211,153,0.15)", color: "var(--green)" }}
-                  >
-                    <Check size={20} />
-                  </div>
-                  <p className="text-sm font-mono" style={{ color: "var(--text)" }}>{pendingFile.name}</p>
-                  <p className="text-xs" style={{ color: "var(--muted)" }}>{formatBytes(pendingFile.size)}</p>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: "rgba(79,142,255,0.12)",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    <Upload size={20} />
-                  </div>
-                  <p className="text-sm" style={{ color: "var(--text)" }}>Drop file here or click to browse</p>
-                  <p className="text-xs" style={{ color: "var(--muted)" }}>Max 50 MB · any file type</p>
-                </>
-              )}
+          {/* Custom name */}
+          {pendingFile && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-mono" style={{ color: "var(--muted)" }}>
+                CDN path — <span style={{ color: "var(--accent2)" }}>upload.drilex.cz/</span><span style={{ color: "var(--text2)" }}>your-filename.ext</span>
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                style={{ background: "var(--surface2)", border: "1px solid var(--border2)" }}>
+                <span className="text-xs font-mono shrink-0" style={{ color: "var(--muted)" }}>upload.drilex.cz/</span>
+                <input value={customName} onChange={e => setCustomName(e.target.value)}
+                  placeholder="logo.png"
+                  className="flex-1 bg-transparent outline-none text-sm font-mono"
+                  style={{ color: "var(--text)" }} />
+              </div>
             </div>
+          )}
 
-            {/* Custom name input */}
+          {uploadError && (
+            <div className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl"
+              style={{ background: "rgba(248,113,113,0.08)", color: "var(--red)", border: "1px solid rgba(248,113,113,0.2)" }}>
+              <AlertCircle size={13} /> {uploadError}
+            </div>
+          )}
+
+          {uploadResult && (
+            <div className="flex flex-col gap-2 px-4 py-3 rounded-xl fade-in"
+              style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.2)" }}>
+              <p className="text-sm flex items-center gap-2" style={{ color: "var(--green)" }}>
+                <CheckCheck size={14} /> Uploaded! Your permanent CDN link:
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text)" }}>{uploadResult.url}</span>
+                <CopyBtn text={uploadResult.url} />
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
             {pendingFile && (
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-mono" style={{ color: "var(--muted)" }}>
-                  CDN filename <span style={{ color: "var(--accent)" }}>(the URL slug)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono" style={{ color: "var(--muted)" }}>upload.drilex.cz/</span>
-                  <input
-                    value={customName}
-                    onChange={e => setCustomName(e.target.value)}
-                    placeholder="logo.png"
-                    className="flex-1 px-3 py-2 rounded-xl text-sm font-mono outline-none transition-all"
-                    style={{
-                      background: "var(--surface2)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text)",
-                    }}
-                    onFocus={e => e.target.style.borderColor = "var(--accent)"}
-                    onBlur={e => e.target.style.borderColor = "var(--border)"}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Error */}
-            {uploadError && (
-              <div
-                className="flex items-center gap-2 text-sm px-3 py-2 rounded-xl"
-                style={{ background: "rgba(248,113,113,0.08)", color: "var(--red)", border: "1px solid rgba(248,113,113,0.2)" }}
-              >
-                <AlertCircle size={14} /> {uploadError}
-              </div>
-            )}
-
-            {/* Success */}
-            {uploadResult && (
-              <div
-                className="flex flex-col gap-2 px-4 py-3 rounded-xl fade-up"
-                style={{ background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.2)" }}
-              >
-                <div className="flex items-center gap-2 text-sm" style={{ color: "var(--green)" }}>
-                  <CheckCheck size={15} /> Uploaded — permanent CDN link:
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text)" }}>
-                    {uploadResult.url}
-                  </span>
-                  <CopyBtn text={uploadResult.url} />
-                </div>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-3">
-              {pendingFile && (
-                <button
-                  onClick={() => { setPendingFile(null); setCustomName(""); setUploadResult(null); setUploadError(""); }}
-                  className="px-4 py-2.5 rounded-xl text-sm font-mono transition-all"
-                  style={{ background: "var(--surface2)", color: "var(--muted)", border: "1px solid var(--border)" }}
-                >
-                  Cancel
-                </button>
-              )}
-              <button
-                onClick={() => pendingFile && doUpload(pendingFile, customName)}
-                disabled={!pendingFile || uploading}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-mono font-semibold transition-all"
-                style={{
-                  background: pendingFile && !uploading
-                    ? "linear-gradient(135deg, var(--accent), var(--accent2))"
-                    : "var(--surface2)",
-                  color: pendingFile && !uploading ? "#fff" : "var(--muted)",
-                  cursor: !pendingFile || uploading ? "not-allowed" : "pointer",
-                }}
-              >
-                {uploading ? (
-                  <><RefreshCw size={15} className="spinner" /> Uploading…</>
-                ) : (
-                  <><Upload size={15} /> Upload to CDN</>
-                )}
+              <button onClick={() => { setPendingFile(null); setCustomName(""); setUploadResult(null); setUploadError(""); }}
+                className="px-4 py-2.5 rounded-xl text-sm font-mono"
+                style={{ background: "var(--surface2)", color: "var(--muted)", border: "1px solid var(--border)" }}>
+                Cancel
               </button>
-            </div>
+            )}
+            <button onClick={doUpload} disabled={!pendingFile || uploading}
+              className="flex-1 glow-btn flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-mono font-semibold"
+              style={{
+                background: pendingFile && !uploading ? "linear-gradient(135deg, var(--accent), var(--accent2))" : "var(--surface2)",
+                color: pendingFile && !uploading ? "#fff" : "var(--muted)",
+                cursor: !pendingFile || uploading ? "not-allowed" : "pointer",
+                boxShadow: pendingFile && !uploading ? undefined : "none",
+              }}>
+              {uploading ? <><RefreshCw size={14} className="spinner" /> Uploading…</> : <><Upload size={14} /> Upload to CDN</>}
+            </button>
           </div>
-        </section>
+        </div>
 
-        {/* File library */}
-        <section className="fade-up flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-mono font-semibold text-sm" style={{ color: "var(--text)" }}>
-              All Files
-              <span className="ml-2 text-xs" style={{ color: "var(--muted)" }}>({files.length})</span>
-            </h2>
-          </div>
+        {/* Files */}
+        <div className="flex flex-col gap-4">
+          <h2 className="font-semibold text-sm flex items-center gap-2" style={{ color: "var(--text)" }}>
+            All Files <span className="text-xs font-normal" style={{ color: "var(--muted)" }}>({files.length})</span>
+          </h2>
 
           {loading ? (
-            <div className="flex items-center justify-center py-20" style={{ color: "var(--muted)" }}>
-              <RefreshCw size={20} className="spinner mr-3" /> Loading…
+            <div className="flex items-center justify-center py-16" style={{ color: "var(--muted)" }}>
+              <RefreshCw size={18} className="spinner mr-3" /> Loading…
             </div>
           ) : files.length === 0 ? (
-            <div
-              className="flex flex-col items-center justify-center py-20 rounded-2xl"
-              style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
-            >
+            <div className="card flex flex-col items-center justify-center py-20 gap-3">
               <Upload size={32} style={{ color: "var(--muted)" }} />
-              <p className="mt-3 text-sm" style={{ color: "var(--muted)" }}>No files yet — upload your first asset</p>
+              <p className="text-sm" style={{ color: "var(--muted)" }}>No files yet — upload your first asset above</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -604,8 +501,34 @@ export default function App() {
               ))}
             </div>
           )}
-        </section>
+        </div>
       </main>
     </div>
+  );
+}
+
+// ── Root ───────────────────────────────────────────────────────
+export default function App() {
+  const [page, setPage] = useState("landing"); // landing | login | admin
+  const [password, setPassword] = useState("");
+  const [files, setFiles] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("cdn_pw");
+    if (saved) {
+      fetch(`${API}/files`, { headers: { "x-admin-password": saved } })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(f => { setPassword(saved); setFiles(f); setPage("admin"); })
+        .catch(() => {});
+    }
+  }, []);
+
+  if (page === "landing") return <Landing onEnter={() => setPage("login")} />;
+  if (page === "login") return (
+    <Login onSuccess={(pw, f) => { setPassword(pw); setFiles(f); setPage("admin"); }} />
+  );
+  return (
+    <Admin password={password} initialFiles={files}
+      onLogout={() => { localStorage.removeItem("cdn_pw"); setPassword(""); setPage("landing"); }} />
   );
 }
