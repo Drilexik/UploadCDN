@@ -6,9 +6,9 @@ const fs = require("fs");
 const cors = require("cors");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "changeme";
-const BASE_URL = process.env.BASE_URL || "http://localhost:3001";
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, "uploads");
 const PUBLIC_DIR = path.join(__dirname, "public");
 
