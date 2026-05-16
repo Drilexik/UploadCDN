@@ -1,6 +1,5 @@
 node_modules/
-frontend/node_modules/
-frontend/dist/
-backend/uploads/
+.next/
+uploads/
 .env
 *.log

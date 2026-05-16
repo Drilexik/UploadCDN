@@ -1,8 +1,10 @@
+"use client";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Upload, Lock, LogOut, Copy, Trash2, Link2, RefreshCw,
   CheckCheck, File, AlertCircle, Edit3, Check, X,
-  Zap, Shield, Globe, ArrowRight, ChevronRight
+  Zap, Shield, Globe, ArrowRight,
 } from "lucide-react";
 
 const API = "/api";
@@ -25,7 +27,12 @@ function CopyBtn({ text, small }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
-      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
+      onClick={e => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1800);
+      }}
       className={`flex items-center gap-1 rounded-lg font-mono transition-all ${small ? "px-2 py-0.5 text-xs" : "px-3 py-1.5 text-xs"}`}
       style={{
         background: copied ? "rgba(52,211,153,0.12)" : "rgba(139,92,246,0.12)",
@@ -52,11 +59,11 @@ function FileCard({ file, onDelete, onRename }) {
 
   return (
     <div className="card fade-up flex flex-col gap-3 p-4 group">
-      {/* Preview */}
       <div className="w-full h-28 rounded-xl flex items-center justify-center overflow-hidden relative"
         style={{ background: "var(--surface2)" }}>
         {isImage(file.filename) ? (
-          <img src={file.url} alt={file.filename} className="max-h-full max-w-full object-contain" onError={e => e.target.style.display = "none"} />
+          <img src={file.url} alt={file.filename} className="max-h-full max-w-full object-contain"
+            onError={e => { e.target.style.display = "none"; }} />
         ) : (
           <File size={28} style={{ color: "var(--muted)" }} />
         )}
@@ -67,7 +74,6 @@ function FileCard({ file, onDelete, onRename }) {
         </a>
       </div>
 
-      {/* Name */}
       {renaming ? (
         <div className="flex items-center gap-1">
           <input value={newName} onChange={e => setNewName(e.target.value)}
@@ -79,21 +85,23 @@ function FileCard({ file, onDelete, onRename }) {
         </div>
       ) : (
         <div className="flex items-center gap-1.5">
-          <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text2)" }} title={file.filename}>{file.filename}</span>
-          <button onClick={() => setRenaming(true)} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" style={{ color: "var(--muted)" }}>
+          <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text2)" }} title={file.filename}>
+            {file.filename}
+          </span>
+          <button onClick={() => setRenaming(true)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            style={{ color: "var(--muted)" }}>
             <Edit3 size={12} />
           </button>
         </div>
       )}
 
-      {/* URL */}
       <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
         style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
         <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--muted)" }}>{file.url}</span>
         <CopyBtn text={file.url} small />
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between">
         <span className="text-xs" style={{ color: "var(--muted)" }}>{formatBytes(file.size)} · {timeAgo(file.mtime)}</span>
         <button onClick={async () => { setDeleting(true); await onDelete(file.filename); }}
@@ -107,29 +115,21 @@ function FileCard({ file, onDelete, onRename }) {
   );
 }
 
-// ── Landing Page ───────────────────────────────────────────────
+// ── Landing ────────────────────────────────────────────────────
 function Landing({ onEnter }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      {/* Grid bg */}
       <div className="fixed inset-0 grid-bg pointer-events-none" />
-      {/* Purple glow orbs */}
       <div className="fixed pointer-events-none" style={{
         top: "-15%", left: "50%", transform: "translateX(-50%)",
         width: 700, height: 700, borderRadius: "50%",
         background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)",
       }} />
-      <div className="fixed pointer-events-none" style={{
-        bottom: "-10%", right: "-10%",
-        width: 500, height: 500, borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(167,139,250,0.1) 0%, transparent 70%)",
-      }} />
 
-      {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Drilex" className="w-8 h-8 rounded-lg" />
-          <span className="font-mono font-bold text-sm tracking-tight" style={{ color: "var(--text)" }}>
+          <span className="font-mono font-bold text-sm" style={{ color: "var(--text)" }}>
             drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
           </span>
         </div>
@@ -140,9 +140,7 @@ function Landing({ onEnter }) {
         </button>
       </nav>
 
-      {/* Hero */}
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center gap-10 py-20">
-        {/* Logo */}
         <div className="float" style={{ filter: "drop-shadow(0 0 40px rgba(139,92,246,0.5))" }}>
           <img src="/logo.png" alt="Drilex" className="w-24 h-24 rounded-2xl" style={{
             boxShadow: "0 0 60px rgba(139,92,246,0.4), 0 0 120px rgba(139,92,246,0.15)",
@@ -154,21 +152,17 @@ function Landing({ onEnter }) {
             style={{ background: "var(--accent-dim)", color: "var(--accent2)", border: "1px solid rgba(139,92,246,0.25)" }}>
             <Zap size={11} /> Static · Fast · Permanent
           </div>
-
           <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-none">
             <span style={{ color: "var(--text)" }}>Your personal</span>
             <br />
             <span className="shimmer-text">CDN platform</span>
           </h1>
-
           <p className="text-lg" style={{ color: "var(--text2)", maxWidth: 480 }}>
-            Upload logos, favicons, images and assets. Get a permanent static URL instantly.
-            No expiry. No fuss.
+            Upload logos, favicons, images and assets. Get a permanent static URL instantly. No expiry. No fuss.
           </p>
         </div>
 
-        {/* URL example */}
-        <div className="flex items-center gap-0 rounded-2xl overflow-hidden text-sm font-mono"
+        <div className="flex items-center rounded-2xl overflow-hidden text-sm font-mono"
           style={{ background: "var(--surface)", border: "1px solid var(--border2)", boxShadow: "0 0 40px rgba(139,92,246,0.12)" }}>
           <div className="px-5 py-3.5 flex items-center gap-2" style={{ color: "var(--muted)", borderRight: "1px solid var(--border)" }}>
             <Globe size={14} style={{ color: "var(--accent)" }} />
@@ -181,23 +175,17 @@ function Landing({ onEnter }) {
           </div>
         </div>
 
-        {/* CTA */}
         <button onClick={onEnter}
           className="glow-btn flex items-center gap-3 px-8 py-4 rounded-2xl text-base font-semibold"
-          style={{
-            background: "linear-gradient(135deg, var(--accent), var(--accent2))",
-            color: "#fff",
-          }}>
-          <Upload size={18} /> Upload Files
-          <ArrowRight size={16} />
+          style={{ background: "linear-gradient(135deg, var(--accent), var(--accent2))", color: "#fff" }}>
+          <Upload size={18} /> Upload Files <ArrowRight size={16} />
         </button>
 
-        {/* Features */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
           {[
-            { icon: Zap, title: "Instant URLs", desc: "Choose your own filename and get a link immediately" },
-            { icon: Shield, title: "Admin Protected", desc: "Password-secured uploads, public read access" },
-            { icon: Globe, title: "Permanent Links", desc: "Static URLs that never expire or change" },
+            { icon: Zap, title: "Instant URLs", desc: "Choose your own filename and get a permanent link immediately" },
+            { icon: Shield, title: "Admin Protected", desc: "Password-secured uploads, public read access for everyone" },
+            { icon: Globe, title: "Permanent Links", desc: "Static URLs that never expire, change, or go down" },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="card p-5 flex flex-col gap-2 text-left">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -212,34 +200,37 @@ function Landing({ onEnter }) {
       </main>
 
       <footer className="relative z-10 text-center py-6 text-xs font-mono" style={{ color: "var(--muted)" }}>
-        upload.drilex.cz · self-hosted CDN
+        upload.drilex.cz · self-hosted CDN by Drilex
       </footer>
     </div>
   );
 }
 
 // ── Login ──────────────────────────────────────────────────────
-function Login({ onSuccess }) {
-  const [pw, setPw] = useState(() => localStorage.getItem("cdn_pw") || "");
+function Login({ onSuccess, onBack }) {
+  const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const tryLogin = async (e) => {
-    e.preventDefault();
+  const tryLogin = async (e, password) => {
+    if (e) e.preventDefault();
+    const usePw = password || pw;
+    if (!usePw) return;
     setError(""); setLoading(true);
     try {
-      const res = await fetch(`${API}/files`, { headers: { "x-admin-password": pw } });
+      const res = await fetch(`${API}/files`, { headers: { "x-admin-password": usePw } });
       if (!res.ok) throw new Error();
       const files = await res.json();
-      localStorage.setItem("cdn_pw", pw);
-      onSuccess(pw, files);
+      localStorage.setItem("cdn_pw", usePw);
+      onSuccess(usePw, files);
     } catch {
       setError("Wrong password.");
     } finally { setLoading(false); }
   };
 
   useEffect(() => {
-    if (pw) tryLogin({ preventDefault: () => {} });
+    const saved = localStorage.getItem("cdn_pw");
+    if (saved) { setPw(saved); tryLogin(null, saved); }
   }, []);
 
   return (
@@ -288,13 +279,18 @@ function Login({ onSuccess }) {
             }}>
             {loading ? "Checking…" : "Enter CDN →"}
           </button>
+          <button type="button" onClick={onBack}
+            className="text-xs text-center font-mono transition-colors"
+            style={{ color: "var(--muted)" }}>
+            ← Back to home
+          </button>
         </form>
       </div>
     </div>
   );
 }
 
-// ── Admin Panel ────────────────────────────────────────────────
+// ── Admin ──────────────────────────────────────────────────────
 function Admin({ password, initialFiles, onLogout }) {
   const [files, setFiles] = useState(initialFiles);
   const [loading, setLoading] = useState(false);
@@ -331,17 +327,27 @@ function Admin({ password, initialFiles, onLogout }) {
     finally { setUploading(false); }
   };
 
-  const handleDrop = e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) { setPendingFile(f); setCustomName(f.name); } };
-  const handleInput = e => { const f = e.target.files[0]; if (f) { setPendingFile(f); setCustomName(f.name); } };
+  const handleDrop = e => {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) { setPendingFile(f); setCustomName(f.name); }
+  };
+  const handleInput = e => {
+    const f = e.target.files[0];
+    if (f) { setPendingFile(f); setCustomName(f.name); }
+  };
 
   const deleteFile = async filename => {
-    await fetch(`${API}/files/${encodeURIComponent(filename)}`, { method: "DELETE", headers: { "x-admin-password": password } });
+    await fetch(`${API}/files/${encodeURIComponent(filename)}`, {
+      method: "DELETE", headers: { "x-admin-password": password },
+    });
     setFiles(f => f.filter(x => x.filename !== filename));
   };
 
   const renameFile = async (old_, new_) => {
-    const res = await fetch(`${API}/files/${encodeURIComponent(old_)}/rename`, {
-      method: "POST", headers: { "x-admin-password": password, "Content-Type": "application/json" },
+    const res = await fetch(`${API}/files/${encodeURIComponent(old_)}`, {
+      method: "PATCH",
+      headers: { "x-admin-password": password, "Content-Type": "application/json" },
       body: JSON.stringify({ newFilename: new_ }),
     });
     if (res.ok) await fetchFiles();
@@ -351,7 +357,6 @@ function Admin({ password, initialFiles, onLogout }) {
     <div className="min-h-screen" style={{ background: "var(--bg)" }}>
       <div className="fixed inset-0 grid-bg pointer-events-none" />
 
-      {/* Header */}
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
         style={{ background: "rgba(8,7,15,0.85)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(16px)" }}>
         <div className="flex items-center gap-3">
@@ -365,7 +370,7 @@ function Admin({ password, initialFiles, onLogout }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchFiles} className="p-2 rounded-lg" style={{ color: "var(--muted)" }} title="Refresh">
+          <button onClick={fetchFiles} className="p-2 rounded-lg" style={{ color: "var(--muted)" }}>
             <RefreshCw size={15} className={loading ? "spinner" : ""} />
           </button>
           <button onClick={onLogout}
@@ -377,22 +382,19 @@ function Admin({ password, initialFiles, onLogout }) {
       </header>
 
       <main className="relative z-10 max-w-5xl mx-auto px-4 py-8 flex flex-col gap-8">
-
-        {/* Upload card */}
-        <div className="card p-6 flex flex-col gap-5"
-          style={{ boxShadow: "0 0 60px rgba(139,92,246,0.08)" }}>
+        {/* Upload */}
+        <div className="card p-6 flex flex-col gap-5">
           <div className="flex items-center gap-2">
             <Upload size={15} style={{ color: "var(--accent)" }} />
             <h2 className="font-semibold text-sm" style={{ color: "var(--text)" }}>Upload Asset</h2>
           </div>
 
-          {/* Drop zone */}
           <div
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer transition-all"
+            className="rounded-2xl flex flex-col items-center justify-center gap-3 cursor-pointer"
             style={{
               minHeight: 160,
               border: `2px dashed ${dragOver ? "var(--accent)" : pendingFile ? "rgba(52,211,153,0.5)" : "var(--border2)"}`,
@@ -415,17 +417,19 @@ function Admin({ password, initialFiles, onLogout }) {
                   style={{ background: "var(--accent-dim)", color: "var(--accent2)" }}>
                   <Upload size={22} />
                 </div>
-                <p className="text-sm" style={{ color: "var(--text2)" }}>Drop file here or <span style={{ color: "var(--accent2)" }}>browse</span></p>
+                <p className="text-sm" style={{ color: "var(--text2)" }}>
+                  Drop file here or <span style={{ color: "var(--accent2)" }}>browse</span>
+                </p>
                 <p className="text-xs" style={{ color: "var(--muted)" }}>Any file · max 50 MB</p>
               </>
             )}
           </div>
 
-          {/* Custom name */}
           {pendingFile && (
             <div className="flex flex-col gap-2">
               <label className="text-xs font-mono" style={{ color: "var(--muted)" }}>
-                CDN path — <span style={{ color: "var(--accent2)" }}>upload.drilex.cz/</span><span style={{ color: "var(--text2)" }}>your-filename.ext</span>
+                CDN path — <span style={{ color: "var(--accent2)" }}>upload.drilex.cz/</span>
+                <span style={{ color: "var(--text2)" }}>your-filename.ext</span>
               </label>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
                 style={{ background: "var(--surface2)", border: "1px solid var(--border2)" }}>
@@ -449,7 +453,7 @@ function Admin({ password, initialFiles, onLogout }) {
             <div className="flex flex-col gap-2 px-4 py-3 rounded-xl fade-in"
               style={{ background: "rgba(52,211,153,0.07)", border: "1px solid rgba(52,211,153,0.2)" }}>
               <p className="text-sm flex items-center gap-2" style={{ color: "var(--green)" }}>
-                <CheckCheck size={14} /> Uploaded! Your permanent CDN link:
+                <CheckCheck size={14} /> Uploaded! Permanent CDN link:
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-mono flex-1 truncate" style={{ color: "var(--text)" }}>{uploadResult.url}</span>
@@ -467,12 +471,11 @@ function Admin({ password, initialFiles, onLogout }) {
               </button>
             )}
             <button onClick={doUpload} disabled={!pendingFile || uploading}
-              className="flex-1 glow-btn flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-mono font-semibold"
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-mono font-semibold ${pendingFile && !uploading ? "glow-btn" : ""}`}
               style={{
                 background: pendingFile && !uploading ? "linear-gradient(135deg, var(--accent), var(--accent2))" : "var(--surface2)",
                 color: pendingFile && !uploading ? "#fff" : "var(--muted)",
                 cursor: !pendingFile || uploading ? "not-allowed" : "pointer",
-                boxShadow: pendingFile && !uploading ? undefined : "none",
               }}>
               {uploading ? <><RefreshCw size={14} className="spinner" /> Uploading…</> : <><Upload size={14} /> Upload to CDN</>}
             </button>
@@ -492,7 +495,7 @@ function Admin({ password, initialFiles, onLogout }) {
           ) : files.length === 0 ? (
             <div className="card flex flex-col items-center justify-center py-20 gap-3">
               <Upload size={32} style={{ color: "var(--muted)" }} />
-              <p className="text-sm" style={{ color: "var(--muted)" }}>No files yet — upload your first asset above</p>
+              <p className="text-sm" style={{ color: "var(--muted)" }}>No files yet — upload your first asset</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -508,8 +511,8 @@ function Admin({ password, initialFiles, onLogout }) {
 }
 
 // ── Root ───────────────────────────────────────────────────────
-export default function App() {
-  const [page, setPage] = useState("landing"); // landing | login | admin
+export default function CDNApp() {
+  const [page, setPage] = useState("landing");
   const [password, setPassword] = useState("");
   const [files, setFiles] = useState([]);
 
@@ -525,10 +528,16 @@ export default function App() {
 
   if (page === "landing") return <Landing onEnter={() => setPage("login")} />;
   if (page === "login") return (
-    <Login onSuccess={(pw, f) => { setPassword(pw); setFiles(f); setPage("admin"); }} />
+    <Login
+      onSuccess={(pw, f) => { setPassword(pw); setFiles(f); setPage("admin"); }}
+      onBack={() => setPage("landing")}
+    />
   );
   return (
-    <Admin password={password} initialFiles={files}
-      onLogout={() => { localStorage.removeItem("cdn_pw"); setPassword(""); setPage("landing"); }} />
+    <Admin
+      password={password}
+      initialFiles={files}
+      onLogout={() => { localStorage.removeItem("cdn_pw"); setPassword(""); setPage("landing"); }}
+    />
   );
 }

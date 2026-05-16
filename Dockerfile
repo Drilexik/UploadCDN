@@ -1,27 +1,28 @@
-# Stage 1 — build React frontend
-FROM node:20-alpine AS frontend-builder
-WORKDIR /build/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ .
-RUN npm run build
-
-# Stage 2 — production
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY backend/package*.json ./
-RUN npm install --omit=dev
+COPY package*.json ./
+RUN npm install
 
-COPY backend/server.js .
-COPY --from=frontend-builder /build/frontend/dist ./public
+COPY . .
+RUN npm run build
+
+# Production image
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy standalone Next.js build
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
 RUN mkdir -p /app/uploads
 
-EXPOSE 3001
+EXPOSE 3000
 
-ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 ENV UPLOADS_DIR=/app/uploads
 
 CMD ["node", "server.js"]
