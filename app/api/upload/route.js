@@ -3,10 +3,6 @@ import fs from "fs";
 import path from "path";
 import { checkAuth, UPLOADS_DIR, sanitizeFilename, BASE_URL } from "@/lib/storage";
 
-export const config = {
-  api: { bodyParser: false },
-};
-
 // Max 50MB
 export async function POST(request) {
   if (!checkAuth(request)) {
