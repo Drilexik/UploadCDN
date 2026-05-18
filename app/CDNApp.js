@@ -128,7 +128,7 @@ function Landing({ onEnter }) {
 
       <nav className="relative z-10 flex items-center justify-between px-8 py-5">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Drilex" className="w-8 h-8 rounded-lg" />
+          <img src="/logo.png" alt="Drilex" className="w-8 h-8" />
           <span className="font-mono font-bold text-sm" style={{ color: "var(--text)" }}>
             drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
           </span>
@@ -142,7 +142,7 @@ function Landing({ onEnter }) {
 
       <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 text-center gap-10 py-20">
         <div className="float" style={{ filter: "drop-shadow(0 0 40px rgba(139,92,246,0.5))" }}>
-          <img src="/logo.png" alt="Drilex" className="w-24 h-24 rounded-2xl" style={{
+          <img src="/logo.png" alt="Drilex" className="w-24 h-24" style={{
             boxShadow: "0 0 60px rgba(139,92,246,0.4), 0 0 120px rgba(139,92,246,0.15)",
           }} />
         </div>
@@ -245,7 +245,7 @@ function Login({ onSuccess, onBack }) {
 
       <div className="relative w-full max-w-sm fade-up">
         <div className="flex flex-col items-center mb-8 gap-4">
-          <img src="/logo.png" alt="Drilex" className="w-16 h-16 rounded-2xl float"
+          <img src="/logo.png" alt="Drilex" className="w-16 h-16 float"
             style={{ boxShadow: "0 0 40px rgba(139,92,246,0.5)" }} />
           <div className="text-center">
             <h1 className="font-mono font-bold text-xl" style={{ color: "var(--text)" }}>
@@ -360,7 +360,7 @@ function Admin({ password, initialFiles, onLogout }) {
       <header className="sticky top-0 z-50 flex items-center justify-between px-6 py-4"
         style={{ background: "rgba(8,7,15,0.85)", borderBottom: "1px solid var(--border)", backdropFilter: "blur(16px)" }}>
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Drilex" className="w-8 h-8 rounded-lg" />
+          <img src="/logo.png" alt="Drilex" className="w-8 h-8" />
           <span className="font-mono font-bold text-sm" style={{ color: "var(--text)" }}>
             drilex<span style={{ color: "var(--accent2)" }}>.cdn</span>
           </span>
