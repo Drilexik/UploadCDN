@@ -3,7 +3,8 @@ import fs from "fs";
 import path from "path";
 import { checkAuth, UPLOADS_DIR, sanitizeFilename, BASE_URL } from "@/lib/storage";
 
-// Max 50MB
+export const maxDuration = 60;
+
 export async function POST(request) {
   if (!checkAuth(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -18,8 +19,8 @@ export async function POST(request) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ error: "File too large (max 50MB)" }, { status: 400 });
+    if (file.size > 1024 * 1024 * 1024) {
+      return NextResponse.json({ error: "File too large (max 1GB)" }, { status: 400 });
     }
 
     const originalName = file.name || "upload";
