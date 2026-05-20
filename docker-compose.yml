@@ -1,0 +1,108 @@
+# UploadCDN Docker Compose Security Configuration
+
+version: '3.8'
+
+services:
+  uploadcdn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: uploadcdn
+    restart: unless-stopped
+    
+    # Security: Read-only filesystem except /tmp and /app/uploads
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next
+    
+    # Security: Drop unnecessary capabilities
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    # Security: No new privileges
+    security_opt:
+      - no-new-privileges:true
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    environment:
+      # REQUIRED: Change these in production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - BASE_URL=${BASE_URL}
+      - NODE_ENV=production
+      - PORT=3000
+      - UPLOADS_DIR=/app/uploads
+    
+    volumes:
+      # Mount uploads directory (must exist with proper permissions)
+      - ./uploads:/app/uploads:rw
+    
+    ports:
+      # Only expose to localhost, use reverse proxy for external access
+      - "127.0.0.1:3000:3000"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Reverse proxy with SSL (nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: uploadcdn-nginx
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    
+    depends_on:
+      - uploadcdn
+    
+    security_opt:
+      - no-new-privileges:true
+    
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  uploads:
+    driver: local
