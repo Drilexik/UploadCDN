@@ -15,16 +15,17 @@ echo -e "${YELLOW}=== UploadCDN Production Deployment ===${NC}"
 # 1. Check prerequisites
 echo -e "\n${YELLOW}[1/7] Checking prerequisites...${NC}"
 command -v docker &> /dev/null || { echo -e "${RED}Docker is not installed${NC}"; exit 1; }
-command -v docker-compose &> /dev/null || { echo -e "${RED}Docker Compose is not installed${NC}"; exit 1; }
+# OPRAVA: Kontrola moderního 'docker compose' namísto starého 'docker-compose'
+docker compose version &> /dev/null || { echo -e "${RED}Docker Compose is not installed${NC}"; exit 1; }
 echo -e "${GREEN}✓ Docker and Docker Compose found${NC}"
 
 # 2. Check .env file
 echo -e "\n${YELLOW}[2/7] Checking environment configuration...${NC}"
 if [ ! -f .env ]; then
     echo -e "${RED}✗ .env file not found${NC}"
-    echo \"Copy .env.example to .env and configure:\"
-    echo \"  cp .env.example .env\"
-    echo \"  nano .env\"
+    echo "Copy .env.example to .env and configure:"
+    echo "  cp .env.example .env"
+    echo "  nano .env"
     exit 1
 fi
 
@@ -43,42 +44,47 @@ echo -e "${GREEN}✓ Environment configuration looks good${NC}"
 
 # 3. Create SSL certificates (if not exists)
 echo -e "\n${YELLOW}[3/7] Checking SSL certificates...${NC}"
-if [ ! -d \"certs\" ]; then
+if [ ! -d "certs" ]; then
     mkdir -p certs
-    echo -e \"${YELLOW}Creating self-signed certificate (use Let's Encrypt for production!)${NC}\"
+    echo -e "${YELLOW}Creating self-signed certificate (use Let's Encrypt for production!)${NC}"
     openssl req -x509 -newkey rsa:4096 -nodes -out certs/cert.pem -keyout certs/key.pem -days 365 \
-        -subj \"/CN=upload.drilex.cz/O=drilex/C=CZ\"
+        -subj "/CN=upload.drilex.cz/O=drilex/C=CZ"
 fi
-echo -e \"${GREEN}✓ SSL certificates ready${NC}\"
+echo -e "${GREEN}✓ SSL certificates ready${NC}"
 
 # 4. Create uploads directory with proper permissions
-echo -e \"\n${YELLOW}[4/7] Setting up uploads directory...${NC}\"
+echo -e "\n${YELLOW}[4/7] Setting up uploads directory...${NC}"
 mkdir -p uploads
 chmod 755 uploads
-echo -e \"${GREEN}✓ Uploads directory ready${NC}\"
+echo -e "${GREEN}✓ Uploads directory ready${NC}"
 
 # 5. Build Docker image
-echo -e \"\n${YELLOW}[5/7] Building Docker image...${NC}\"
-docker-compose build
-echo -e \"${GREEN}✓ Docker image built${NC}\"
+echo -e "\n${YELLOW}[5/7] Building Docker image...${NC}"
+# OPRAVA: Změněno na 'docker compose'
+docker compose build
+echo -e "${GREEN}✓ Docker image built${NC}"
 
 # 6. Stop existing containers
-echo -e \"\n${YELLOW}[6/7] Stopping existing containers...${NC}\"
-docker-compose down || true
-echo -e \"${GREEN}✓ Old containers stopped${NC}\"
+echo -e "\n${YELLOW}[6/7] Stopping existing containers...${NC}"
+# OPRAVA: Změněno na 'docker compose'
+docker compose down || true
+echo -e "${GREEN}✓ Old containers stopped${NC}"
 
 # 7. Start services
-echo -e \"\n${YELLOW}[7/7] Starting services...${NC}\"
-docker-compose up -d
-echo -e \"${GREEN}✓ Services started${NC}\"
+echo -e "\n${YELLOW}[7/7] Starting services...${NC}"
+# OPRAVA: Změněno na 'docker compose'
+docker compose up -d
+echo -e "${GREEN}✓ Services started${NC}"
 
 # Health check
-echo -e \"\n${YELLOW}Waiting for health checks...${NC}\"
+echo -e "\n${YELLOW}Waiting for health checks...${NC}"
 sleep 5
-docker-compose ps
+# OPRAVA: Změněno na 'docker compose'
+docker compose ps
 
-echo -e \"\n${GREEN}=== Deployment Complete ===${NC}\"
-echo -e \"${GREEN}✓ UploadCDN is running!${NC}\"
-echo -e \"\nAccess your application at: https://upload.drilex.cz\"
-echo -e \"\nTo view logs: ${YELLOW}docker-compose logs -f${NC}\"
-echo -e \"To stop services: ${YELLOW}docker-compose down${NC}\"
+echo -e "\n${GREEN}=== Deployment Complete ===${NC}"
+echo -e "${GREEN}✓ UploadCDN is running!${NC}"
+echo -e "\nAccess your application at: https://upload.drilex.cz"
+# OPRAVA: Změněno v textové nápovědě na konci
+echo -e "\nTo view logs: ${YELLOW}docker compose logs -f${NC}"
+echo -e "To stop services: ${YELLOW}docker compose down${NC}"
