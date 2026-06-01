@@ -42,15 +42,6 @@ const nextConfig = {
       ],
     },
   ],
-  
-  // Redirects HTTP to HTTPS in production (requires load balancer configuration)
-  redirects: async () => [
-    {
-      source: "/:path*",
-      destination: "/:path*",
-      permanent: false,
-    },
-  ],
 };
 
 module.exports = nextConfig;
