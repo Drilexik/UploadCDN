@@ -37,8 +37,10 @@ services:
           memory: 256M
     
     environment:
-      # REQUIRED: Change these in production
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      # Preferred: salted scrypt hash (set by buildcdnapp/redeploycdnweb).
+      - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH}
+      # Legacy plaintext password (optional; used only if no hash is set).
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - BASE_URL=${BASE_URL}
       - NODE_ENV=production
       - PORT=3000
@@ -80,13 +82,16 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs:/etc/nginx/certs:ro
-    
+      # Access/error logs written to a real file on the host so fail2ban
+      # (see fail2ban/) can ban abusive IPs.
+      - ./logs/nginx:/var/log/nginx
+
     depends_on:
       - uploadcdn
-    
+
     security_opt:
       - no-new-privileges:true
-    
+
     read_only: true
     tmpfs:
       - /var/cache/nginx

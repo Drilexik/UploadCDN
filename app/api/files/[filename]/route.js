@@ -1,209 +1,143 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { checkAuth, UPLOADS_DIR, BASE_URL } from "@/lib/storage";
+import { UPLOADS_DIR, BASE_URL } from "@/lib/storage";
+import { enforceAuth } from "@/lib/auth";
 import {
   validateFilePath,
   sanitizeFilenameSecurity,
   isFilenameBlacklisted,
   logSecurityEvent,
 } from "@/lib/security";
+import { validateFilenameStrict } from "@/lib/inputValidation";
+import { isSymlink } from "@/lib/fileSystemSecurity";
 import { createRateLimiter } from "@/lib/rateLimiter";
+import { getClientIp } from "@/lib/clientIp";
 
 // 5 requests per minute for file operations
 const fileLimiter = createRateLimiter(5, 60000);
 
+// Resolve + validate a filename into a safe absolute path inside UPLOADS_DIR.
+// Returns { path } on success or { error, status } describing the rejection.
+function resolveSafePath(rawName, ip, context) {
+  const filename = sanitizeFilenameSecurity(rawName || "");
+  if (!filename) {
+    return { error: "Invalid filename", status: 400 };
+  }
+
+  const strict = validateFilenameStrict(filename);
+  if (!strict.valid) {
+    logSecurityEvent("INVALID_FILENAME_FORMAT", { filename, reason: strict.reason, context, ip });
+    return { error: "Invalid filename", status: 400 };
+  }
+
+  if (isFilenameBlacklisted(filename)) {
+    logSecurityEvent("BLACKLISTED_FILENAME", { filename, context, ip });
+    return { error: "Invalid filename", status: 400 };
+  }
+
+  const filepath = path.join(UPLOADS_DIR, filename);
+  if (!validateFilePath(filepath, UPLOADS_DIR)) {
+    logSecurityEvent("PATH_TRAVERSAL_ATTEMPT", { attemptedPath: filepath, context, ip });
+    return { error: "Invalid file path", status: 400 };
+  }
+
+  if (fs.existsSync(filepath) && isSymlink(filepath)) {
+    logSecurityEvent("SYMLINK_ATTEMPT", { filepath, context, ip });
+    return { error: "Invalid file", status: 400 };
+  }
+
+  return { path: filepath, filename };
+}
+
 export async function DELETE(request, { params }) {
-  // Rate limiting
+  const ip = getClientIp(request);
+
   const rateLimitResult = fileLimiter(request);
   if (rateLimitResult.limited) {
-    logSecurityEvent("RATE_LIMIT_EXCEEDED", {
-      endpoint: "/api/files/[filename] DELETE",
-      ip: request.headers.get("x-forwarded-for"),
-    });
+    logSecurityEvent("RATE_LIMIT_EXCEEDED", { endpoint: "/api/files/[filename] DELETE", ip });
     return NextResponse.json(
       { error: "Too many requests" },
-      {
-        status: 429,
-        headers: { "Retry-After": rateLimitResult.retryAfter },
-      }
+      { status: 429, headers: { "Retry-After": String(rateLimitResult.retryAfter) } }
     );
   }
 
-  // Authentication
-  if (!checkAuth(request)) {
-    logSecurityEvent("UNAUTHORIZED_DELETE_ATTEMPT", {
-      filename: params.filename,
-      ip: request.headers.get("x-forwarded-for"),
-    });
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const auth = enforceAuth(request, "/api/files/[filename] DELETE");
+  if (!auth.ok) return auth.response;
 
   try {
-    const filename = sanitizeFilenameSecurity(params.filename);
-    
-    if (!filename) {
-      return NextResponse.json(
-        { error: "Invalid filename" },
-        { status: 400 }
-      );
+    const safe = resolveSafePath(params.filename, ip, "delete");
+    if (safe.error) {
+      return NextResponse.json({ error: safe.error }, { status: safe.status });
     }
 
-    const filepath = path.join(UPLOADS_DIR, filename);
-
-    // Path traversal protection
-    if (!validateFilePath(filepath, UPLOADS_DIR)) {
-      logSecurityEvent("PATH_TRAVERSAL_ATTEMPT_DELETE", {
-        attemptedPath: filepath,
-        ip: request.headers.get("x-forwarded-for"),
-      });
-      return NextResponse.json(
-        { error: "Invalid file path" },
-        { status: 400 }
-      );
+    if (!fs.existsSync(safe.path)) {
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    if (!fs.existsSync(filepath)) {
-      return NextResponse.json(
-        { error: "File not found" },
-        { status: 404 }
-      );
-    }
-
-    fs.unlinkSync(filepath);
-    
-    logSecurityEvent("FILE_DELETED", {
-      filename,
-    });
+    fs.unlinkSync(safe.path);
+    logSecurityEvent("FILE_DELETED", { filename: safe.filename });
 
     return NextResponse.json({ success: true });
   } catch (e) {
-    logSecurityEvent("DELETE_ERROR", {
-      error: e.message,
-    });
-    return NextResponse.json(
-      { error: "Failed to delete file" },
-      { status: 500 }
-    );
+    logSecurityEvent("DELETE_ERROR", { error: e.message });
+    return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
   }
 }
 
 export async function PATCH(request, { params }) {
-  // Rate limiting
+  const ip = getClientIp(request);
+
   const rateLimitResult = fileLimiter(request);
   if (rateLimitResult.limited) {
-    logSecurityEvent("RATE_LIMIT_EXCEEDED", {
-      endpoint: "/api/files/[filename] PATCH",
-      ip: request.headers.get("x-forwarded-for"),
-    });
+    logSecurityEvent("RATE_LIMIT_EXCEEDED", { endpoint: "/api/files/[filename] PATCH", ip });
     return NextResponse.json(
       { error: "Too many requests" },
-      {
-        status: 429,
-        headers: { "Retry-After": rateLimitResult.retryAfter },
-      }
+      { status: 429, headers: { "Retry-After": String(rateLimitResult.retryAfter) } }
     );
   }
 
-  // Authentication
-  if (!checkAuth(request)) {
-    logSecurityEvent("UNAUTHORIZED_RENAME_ATTEMPT", {
-      filename: params.filename,
-      ip: request.headers.get("x-forwarded-for"),
-    });
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const auth = enforceAuth(request, "/api/files/[filename] PATCH");
+  if (!auth.ok) return auth.response;
 
   try {
     let body;
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    const { newFilename } = body;
-    const oldName = sanitizeFilenameSecurity(params.filename);
-    const newName = sanitizeFilenameSecurity(newFilename || "");
+    const requestedNew = body && typeof body === "object" ? body.newFilename : "";
 
-    if (!oldName || !newName) {
-      return NextResponse.json(
-        { error: "Invalid filename" },
-        { status: 400 }
-      );
+    const oldSafe = resolveSafePath(params.filename, ip, "rename-old");
+    if (oldSafe.error) {
+      return NextResponse.json({ error: oldSafe.error }, { status: oldSafe.status });
     }
 
-    // Blacklist checks
-    if (isFilenameBlacklisted(oldName) || isFilenameBlacklisted(newName)) {
-      logSecurityEvent("BLACKLISTED_FILENAME_RENAME", {
-        oldName,
-        newName,
-        ip: request.headers.get("x-forwarded-for"),
-      });
-      return NextResponse.json(
-        { error: "Invalid filename" },
-        { status: 400 }
-      );
+    const newSafe = resolveSafePath(requestedNew, ip, "rename-new");
+    if (newSafe.error) {
+      return NextResponse.json({ error: newSafe.error }, { status: newSafe.status });
     }
 
-    const oldPath = path.join(UPLOADS_DIR, oldName);
-    const newPath = path.join(UPLOADS_DIR, newName);
-
-    // Path traversal protection
-    if (!validateFilePath(oldPath, UPLOADS_DIR) || !validateFilePath(newPath, UPLOADS_DIR)) {
-      logSecurityEvent("PATH_TRAVERSAL_ATTEMPT_RENAME", {
-        oldPath,
-        newPath,
-        ip: request.headers.get("x-forwarded-for"),
-      });
-      return NextResponse.json(
-        { error: "Invalid file path" },
-        { status: 400 }
-      );
+    if (!fs.existsSync(oldSafe.path)) {
+      return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    if (!fs.existsSync(oldPath)) {
-      return NextResponse.json(
-        { error: "File not found" },
-        { status: 404 }
-      );
+    if (fs.existsSync(newSafe.path)) {
+      return NextResponse.json({ error: "Filename already exists" }, { status: 409 });
     }
 
-    if (fs.existsSync(newPath)) {
-      return NextResponse.json(
-        { error: "Filename already exists" },
-        { status: 409 }
-      );
-    }
-
-    fs.renameSync(oldPath, newPath);
-
-    logSecurityEvent("FILE_RENAMED", {
-      oldName,
-      newName,
-    });
+    fs.renameSync(oldSafe.path, newSafe.path);
+    logSecurityEvent("FILE_RENAMED", { oldName: oldSafe.filename, newName: newSafe.filename });
 
     return NextResponse.json({
       success: true,
-      filename: newName,
-      url: `${BASE_URL}/${newName}`,
+      filename: newSafe.filename,
+      url: `${BASE_URL}/${newSafe.filename}`,
     });
   } catch (e) {
-    logSecurityEvent("RENAME_ERROR", {
-      error: e.message,
-    });
-    return NextResponse.json(
-      { error: "Failed to rename file" },
-      { status: 500 }
-    );
+    logSecurityEvent("RENAME_ERROR", { error: e.message });
+    return NextResponse.json({ error: "Failed to rename file" }, { status: 500 });
   }
 }

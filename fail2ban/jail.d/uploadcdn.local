@@ -1,0 +1,20 @@
+# Fail2ban jail for UploadCDN.
+# Bans IPs that repeatedly hit /api/ with 401/429 (admin-password brute force
+# or API abuse). __LOGPATH__ is replaced with the absolute path to
+# logs/nginx/access.log by buildcdnapp during installation.
+#
+# Install: render __LOGPATH__ and copy to /etc/fail2ban/jail.d/uploadcdn.local
+# then: systemctl reload fail2ban
+
+[uploadcdn]
+enabled   = true
+filter    = uploadcdn
+logpath   = __LOGPATH__
+port      = http,https
+maxretry  = 6
+findtime  = 600
+bantime   = 3600
+# Escalate bans for repeat offenders.
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 1d

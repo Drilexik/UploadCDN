@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+#
+# redeploycdnweb — rebuild & redeploy the UploadCDN web app into Docker.
+#
+#   ./redeploycdnweb           Interactive: reconfigure domain / admin password /
+#                              TLS, regenerate nginx.conf + .env, then rebuild and
+#                              restart the stack.
+#
+#   ./redeploycdnweb --keep    Keep the existing nginx.conf, .env and certificates
+#                              untouched — just rebuild the image and restart.
+#
+#   ./redeploycdnweb --help    Show this help.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+# shellcheck source=deploy-lib.sh
+source "$SCRIPT_DIR/deploy-lib.sh"
+
+KEEP=0
+case "${1:-}" in
+  --keep|-k) KEEP=1 ;;
+  -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) die "Unknown option: $1 (try --keep or --help)" ;;
+esac
+
+hr
+printf '%s\n' "${BOLD}  UploadCDN — redeploy${NC}"
+hr
+
+check_prereqs
+
+if [ "$KEEP" -eq 1 ]; then
+  # ── Keep existing config; just rebuild + restart ──────────────────────────
+  [ -f .env ] || die "No .env found. Run ./buildcdnapp first (or drop --keep to configure)."
+  [ -f nginx.conf ] || die "No nginx.conf found. Run ./buildcdnapp first (or drop --keep to configure)."
+  info "Keeping existing .env, nginx.conf and certificates."
+  ensure_dirs
+
+  BASE_URL="$(env_get BASE_URL)"
+  build_and_start
+  print_summary "${BASE_URL:-https://your-domain}"
+  exit 0
+fi
+
+# ── Interactive reconfigure ──────────────────────────────────────────────────
+# Pre-fill the domain from the current BASE_URL when available.
+CURRENT_DOMAIN=""
+CURRENT_BASE="$(env_get BASE_URL)"
+if [ -n "$CURRENT_BASE" ]; then
+  CURRENT_DOMAIN="${CURRENT_BASE#http://}"; CURRENT_DOMAIN="${CURRENT_DOMAIN#https://}"; CURRENT_DOMAIN="${CURRENT_DOMAIN%%/*}"
+fi
+
+configure_domain "$CURRENT_DOMAIN"
+BASE_URL="https://${DOMAIN}"
+
+# Admin password: keep the existing hash unless the operator wants to change it.
+EXISTING_HASH="$(env_get ADMIN_PASSWORD_HASH)"
+if [ -n "$EXISTING_HASH" ]; then
+  if confirm "Change the admin password?" "N"; then
+    configure_admin_password
+  else
+    ADMIN_HASH="$EXISTING_HASH"
+    ok "Keeping the existing admin password."
+  fi
+else
+  configure_admin_password
+fi
+
+write_env "$ADMIN_HASH" "$BASE_URL"
+render_nginx_conf "$DOMAIN" "105M"
+ensure_dirs
+setup_certs "$DOMAIN"
+
+build_and_start
+print_summary "$BASE_URL"

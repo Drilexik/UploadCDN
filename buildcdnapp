@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+#
+# buildcdnapp — first-time build & deploy of UploadCDN.
+#
+# Interactively configures the domain, admin password (stored only as a salted
+# scrypt hash), and TLS certificate, then builds the Docker image and starts the
+# stack behind nginx. Run this once on a fresh machine. To redeploy later, use
+# ./redeploycdnweb.
+#
+# Usage: ./buildcdnapp [-h|--help]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+# shellcheck source=deploy-lib.sh
+source "$SCRIPT_DIR/deploy-lib.sh"
+
+case "${1:-}" in
+  -h|--help)
+    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+    ;;
+esac
+
+hr
+printf '%s\n' "${BOLD}  UploadCDN — first-time build${NC}"
+hr
+
+check_prereqs
+
+# Guard against clobbering an existing deployment.
+if [ -f .env ]; then
+  warn "An .env already exists — this looks like an existing deployment."
+  warn "Use ./redeploycdnweb to redeploy (it can keep your config with --keep)."
+  confirm "Continue anyway and RECONFIGURE from scratch?" "N" || die "Aborted."
+fi
+
+# 1. Domain
+configure_domain ""
+BASE_URL="https://${DOMAIN}"
+
+# 2. Admin password -> hash
+configure_admin_password
+
+# 3. Write configuration
+write_env "$ADMIN_HASH" "$BASE_URL"
+render_nginx_conf "$DOMAIN" "105M"
+ensure_dirs
+
+# 4. TLS certificate
+setup_certs "$DOMAIN"
+
+# 5. Build & start
+build_and_start
+
+# 6. Optional: OS-level brute-force banning
+echo
+if confirm "Install the fail2ban jail for /api/ brute-force banning (needs fail2ban + root)?" "Y"; then
+  install_fail2ban
+fi
+
+print_summary "$BASE_URL"
