@@ -1,30 +1,62 @@
 #!/usr/bin/env bash
 #
-# redeploycdnweb — rebuild & redeploy the UploadCDN web app into Docker.
+# redeploycdnweb — pull the latest code from GitHub, rebuild and redeploy.
 #
-#   ./redeploycdnweb           Interactive: reconfigure domain / admin password /
-#                              TLS, regenerate nginx.conf + .env, then rebuild and
-#                              restart the stack.
+#   ./redeploycdnweb            Pull latest code, then interactively
+#                               reconfigure domain / admin password / TLS,
+#                               regenerate nginx.conf + .env, rebuild, restart.
 #
-#   ./redeploycdnweb --keep    Keep the existing nginx.conf, .env and certificates
-#                              untouched — just rebuild the image and restart.
+#   ./redeploycdnweb --keep     Pull latest code, KEEP your secrets (.env /
+#                               admin password) and TLS certs, regenerate
+#                               nginx.conf from the updated template using
+#                               your existing domain, rebuild and restart.
 #
-#   ./redeploycdnweb --help    Show this help.
+#   ./redeploycdnweb --no-pull  Skip the git pull (build the code on disk).
+#
+#   ./redeploycdnweb --help     Show this help.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-# shellcheck source=deploy-lib.sh
-source "$SCRIPT_DIR/deploy-lib.sh"
 
 KEEP=0
-case "${1:-}" in
-  --keep|-k) KEEP=1 ;;
-  -h|--help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-  "") ;;
-  *) die "Unknown option: $1 (try --keep or --help)" ;;
-esac
+NO_PULL=0
+for arg in "$@"; do
+  case "$arg" in
+    --keep|-k)  KEEP=1 ;;
+    --no-pull)  NO_PULL=1 ;;
+    -h|--help)  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *)          echo "Unknown option: $arg (try --keep, --no-pull or --help)" >&2; exit 1 ;;
+  esac
+done
+
+# ── Pull latest code, then re-exec the (possibly updated) script once ────────
+# Bash reads a script as it runs, so replacing the file mid-execution is unsafe.
+# We pull first and then exec a fresh copy. REDEPLOY_REEXEC guards the loop.
+if [ -z "${REDEPLOY_REEXEC:-}" ] && [ "$NO_PULL" -eq 0 ]; then
+  if command -v git >/dev/null 2>&1 && [ -d .git ]; then
+    branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+    echo "➜ Pulling latest code from origin/${branch}..."
+    # nginx.conf is a generated artifact (gitignored). Drop any stray tracked
+    # copy from older checkouts so the fast-forward can't conflict; it gets
+    # regenerated from nginx.conf.template below.
+    git checkout -- nginx.conf 2>/dev/null || true
+    if ! git pull --ff-only origin "$branch"; then
+      echo "✗ git pull failed. Resolve it manually, or re-run with --no-pull" >&2
+      echo "  to build the code already on disk." >&2
+      exit 1
+    fi
+    echo "✓ Now at: $(git log --oneline -1)"
+  else
+    echo "⚠ Not a git checkout — skipping pull (building local code)."
+  fi
+  export REDEPLOY_REEXEC=1
+  exec bash "$SCRIPT_DIR/$(basename "$0")" "$@"
+fi
+
+# shellcheck source=deploy-lib.sh
+source "$SCRIPT_DIR/deploy-lib.sh"
 
 hr
 printf '%s\n' "${BOLD}  UploadCDN — redeploy${NC}"
@@ -33,15 +65,21 @@ hr
 check_prereqs
 
 if [ "$KEEP" -eq 1 ]; then
-  # ── Keep existing config; just rebuild + restart ──────────────────────────
+  # ── Keep secrets + certs; refresh code and regenerate nginx.conf ──────────
   [ -f .env ] || die "No .env found. Run ./buildcdnapp first (or drop --keep to configure)."
-  [ -f nginx.conf ] || die "No nginx.conf found. Run ./buildcdnapp first (or drop --keep to configure)."
-  info "Keeping existing .env, nginx.conf and certificates."
-  ensure_dirs
+  info "Keeping secrets (.env / admin password) and TLS certificates."
 
   BASE_URL="$(env_get BASE_URL)"
+  DOMAIN="${BASE_URL#http://}"; DOMAIN="${DOMAIN#https://}"; DOMAIN="${DOMAIN%%/*}"
+  [ -n "$DOMAIN" ] || die "Could not determine domain from .env (BASE_URL is empty)."
+
+  # Regenerate nginx.conf from the freshly pulled template (same domain) so
+  # template improvements ship too, without touching secrets or certs.
+  render_nginx_conf "$DOMAIN" "105M"
+  ensure_dirs
+
   build_and_start
-  print_summary "${BASE_URL:-https://your-domain}"
+  print_summary "${BASE_URL:-https://$DOMAIN}"
   exit 0
 fi
 
