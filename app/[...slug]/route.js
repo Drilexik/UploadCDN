@@ -39,6 +39,58 @@ const ACTIVE_TYPES = new Set([
   ".xhtml",
 ]);
 
+// Raster formats jimp can decode/encode for on-the-fly resizing.
+const RESIZABLE = new Set([".png", ".jpg", ".jpeg", ".gif", ".bmp"]);
+const MAX_DIM = 2048;            // clamp requested width/height
+const MAX_RESIZE_SOURCE = 20 * 1024 * 1024; // don't resize sources larger than 20MB
+
+// Parse ?size=600x600 | 600;600 | 600,600 | 600 (square), or ?w=&h=.
+// Returns { w, h } (either may be undefined) or null if no resize requested.
+function parseSize(searchParams) {
+  let w, h;
+  const size = searchParams.get("size");
+  if (size) {
+    const parts = size.split(/[x;,*X]/).map((s) => parseInt(s, 10));
+    if (parts.length === 1) {
+      w = h = parts[0];
+    } else {
+      w = parts[0];
+      h = parts[1];
+    }
+  }
+  const qw = searchParams.get("w");
+  const qh = searchParams.get("h");
+  if (qw !== null) w = parseInt(qw, 10);
+  if (qh !== null) h = parseInt(qh, 10);
+  const clamp = (v) => (Number.isInteger(v) && v > 0 ? Math.min(v, MAX_DIM) : undefined);
+  w = clamp(w);
+  h = clamp(h);
+  if (!w && !h) return null;
+  return { w, h };
+}
+
+// Resize with jimp. Defensive: any failure (lib missing, decode error, …)
+// returns null so the caller serves the original untouched.
+async function resizeImage(buffer, ext, dims) {
+  try {
+    const { Jimp } = await import("jimp");
+    const img = await Jimp.read(buffer);
+    let { w, h } = dims;
+    const aspect = img.bitmap.height / img.bitmap.width;
+    if (w && !h) h = Math.max(1, Math.round(w * aspect));
+    if (h && !w) w = Math.max(1, Math.round(h / aspect));
+    img.resize({ w, h });
+    const mime =
+      ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" :
+      ext === ".gif" ? "image/gif" :
+      ext === ".bmp" ? "image/bmp" :
+      "image/png";
+    return { buffer: await img.getBuffer(mime), contentType: mime };
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request, { params }) {
   const filename = params.slug?.join("/") || "";
 
@@ -68,9 +120,22 @@ export async function GET(request, { params }) {
     return new NextResponse("File not found", { status: 404 });
   }
 
-  const fileBuffer = fs.readFileSync(filepath);
+  let fileBuffer = fs.readFileSync(filepath);
   const ext = path.extname(filename).toLowerCase();
-  const contentType = mimeTypes[ext] || "application/octet-stream";
+  let contentType = mimeTypes[ext] || "application/octet-stream";
+
+  // Optional on-the-fly resize for raster images: /pic.png?size=600x600
+  // (also accepts ?w= / ?h=). Silently no-ops on unsupported/oversized files.
+  if (RESIZABLE.has(ext) && fileBuffer.length <= MAX_RESIZE_SOURCE) {
+    const dims = parseSize(new URL(request.url).searchParams);
+    if (dims) {
+      const resized = await resizeImage(fileBuffer, ext, dims);
+      if (resized) {
+        fileBuffer = resized.buffer;
+        contentType = resized.contentType;
+      }
+    }
+  }
 
   const headers = {
     "Content-Type": contentType,
