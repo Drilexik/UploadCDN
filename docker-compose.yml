@@ -1,7 +1,5 @@
 # UploadCDN Docker Compose Security Configuration
 
-version: '3.8'
-
 services:
   uploadcdn:
     build:
