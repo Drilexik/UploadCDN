@@ -8,11 +8,13 @@ services:
     container_name: uploadcdn
     restart: unless-stopped
     
-    # Security: Read-only filesystem except /tmp and /app/uploads
+    # Security: Read-only filesystem. Only /tmp and the Next.js runtime cache
+    # are writable. NOTE: do NOT tmpfs the whole /app/.next — that masks the
+    # standalone build (BUILD_ID, server chunks) and the server fails to start.
     read_only: true
     tmpfs:
       - /tmp
-      - /app/.next
+      - /app/.next/cache
     
     # Security: Drop unnecessary capabilities
     cap_drop:
@@ -84,8 +86,11 @@ services:
       # (see fail2ban/) can ban abusive IPs.
       - ./logs/nginx:/var/log/nginx
 
+    # Wait until the app is actually healthy, otherwise nginx fails to resolve
+    # the "uploadcdn" upstream at startup ("host not found in upstream").
     depends_on:
-      - uploadcdn
+      uploadcdn:
+        condition: service_healthy
 
     security_opt:
       - no-new-privileges:true

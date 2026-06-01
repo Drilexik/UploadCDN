@@ -22,8 +22,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Create uploads directory with proper permissions
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads && chmod 755 /app/uploads
+# Create uploads dir and the Next.js cache mountpoint (the latter is backed by
+# a tmpfs at runtime, since the root filesystem is read-only).
+RUN mkdir -p /app/uploads /app/.next/cache \
+  && chown -R nextjs:nodejs /app/uploads /app/.next/cache \
+  && chmod 755 /app/uploads
 
 # Set secure environment
 ENV PORT=3000
