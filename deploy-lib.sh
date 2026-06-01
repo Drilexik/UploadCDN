@@ -41,6 +41,12 @@ check_prereqs() {
 ensure_dirs() {
   mkdir -p uploads logs/nginx certs
   chmod 755 uploads 2>/dev/null || true
+  # The app container runs as uid/gid 1001 (nextjs) on a read-only root FS, so
+  # the bind-mounted uploads dir must be owned by that user or writes (and the
+  # startup chmod) fail with EPERM/EACCES. Only root on the host can chown.
+  if [ "$(id -u)" -eq 0 ]; then
+    chown -R 1001:1001 uploads 2>/dev/null || true
+  fi
   ok "Directories ready (uploads/, logs/nginx/, certs/)."
 }
 

@@ -44,6 +44,9 @@ services:
       - BASE_URL=${BASE_URL}
       - NODE_ENV=production
       - PORT=3000
+      # Bind the standalone server to all interfaces (Docker otherwise sets
+      # HOSTNAME to the container id, breaking localhost healthchecks).
+      - HOSTNAME=0.0.0.0
       - UPLOADS_DIR=/app/uploads
     
     volumes:
@@ -54,9 +57,10 @@ services:
       # Only expose to localhost, use reverse proxy for external access
       - "127.0.0.1:3000:3000"
     
-    # Health check
+    # Health check — drain the response and exit explicitly (otherwise the node
+    # process hangs on the open socket until timeout and reports unhealthy).
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3000',r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"]
       interval: 30s
       timeout: 3s
       retries: 3

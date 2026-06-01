@@ -28,8 +28,12 @@ RUN mkdir -p /app/uploads /app/.next/cache \
   && chown -R nextjs:nodejs /app/uploads /app/.next/cache \
   && chmod 755 /app/uploads
 
-# Set secure environment
+# Set secure environment.
+# HOSTNAME=0.0.0.0 makes the Next standalone server bind to all interfaces.
+# Without it, Docker sets HOSTNAME to the container ID and the server binds only
+# to that hostname, so localhost healthchecks are refused.
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
 ENV UPLOADS_DIR=/app/uploads
 ENV NODE_ENV=production
 
@@ -38,7 +42,9 @@ USER nextjs
 
 EXPOSE 3000
 
+# Healthcheck must drain the response and exit explicitly, otherwise the node
+# process hangs on the open socket until the timeout and is reported unhealthy.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+  CMD node -e "require('http').get('http://127.0.0.1:3000',r=>{r.resume();process.exit(r.statusCode===200?0:1)}).on('error',()=>process.exit(1))"
 
 CMD ["node", "server.js"]
