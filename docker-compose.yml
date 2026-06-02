@@ -73,47 +73,10 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Reverse proxy with SSL (nginx)
-  nginx:
-    image: nginx:alpine
-    container_name: uploadcdn-nginx
-    restart: unless-stopped
-    
-    ports:
-      - "80:80"
-      - "443:443"
-    
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-      # Access/error logs written to a real file on the host so fail2ban
-      # (see fail2ban/) can ban abusive IPs.
-      - ./logs/nginx:/var/log/nginx
-
-    # Wait until the app is actually healthy, otherwise nginx fails to resolve
-    # the "uploadcdn" upstream at startup ("host not found in upstream").
-    depends_on:
-      uploadcdn:
-        condition: service_healthy
-
-    security_opt:
-      - no-new-privileges:true
-
-    read_only: true
-    tmpfs:
-      - /var/cache/nginx
-      - /var/run
-    
-    cap_drop:
-      - ALL
-    cap_add:
-      - NET_BIND_SERVICE
-    
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+# NOTE: the "nginx" (uploadcdn-nginx) reverse-proxy service was removed 2026-06-02.
+# It published host ports 80/443 which conflict with the host's own nginx, so it
+# was permanently crash-looping. upload.drilex.cz is served by the host nginx
+# proxying directly to 127.0.0.1:3000, making this container redundant.
 
 volumes:
   uploads:
