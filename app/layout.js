@@ -1,4 +1,5 @@
 import "./globals.css";
+import CookieConsent from "./components/CookieConsent";
 
 export const metadata = {
   title: "Drilex CDN",
@@ -17,7 +18,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent matomoSiteId="2" owaSiteId="d7d8416dcabbffe05aa23048dbdd3c9a" />
+      </body>
     </html>
   );
 }

@@ -200,7 +200,7 @@ function Landing({ onEnter }) {
       </main>
 
       <footer className="relative z-10 text-center py-6 text-xs font-mono" style={{ color: "var(--muted)" }}>
-        upload.drilex.cz · self-hosted CDN by Drilex
+        upload.drilex.cz · self-hosted CDN by Drilex{" · "}<a href="/gdpr" style={{ color: "var(--accent2)" }}>GDPR</a>
       </footer>
     </div>
   );
