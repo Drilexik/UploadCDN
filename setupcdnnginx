@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# setupcdnnginx — interactively (re)generate the nginx config for UploadCDN.
+#
+# Regenerates nginx.conf from nginx.conf.template (domain + max upload size you
+# choose), optionally (re)configures the TLS certificate, validates the config,
+# and reloads the running nginx — without rebuilding the app or touching .env.
+#
+# Usage: ./setupcdnnginx [-h|--help]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+# shellcheck source=deploy-lib.sh
+source "$SCRIPT_DIR/deploy-lib.sh"
+
+case "${1:-}" in
+  -h|--help) sed -n '2,9p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  "") ;;
+  *) die "Unknown option: $1 (try --help)" ;;
+esac
+
+hr
+printf '%s\n' "${BOLD}  UploadCDN — nginx setup${NC}"
+hr
+
+check_prereqs
+[ -f nginx.conf.template ] || die "nginx.conf.template not found (run this from the project directory)."
+
+# Pre-fill the domain from .env BASE_URL, else from the current nginx.conf.
+DEFAULT_DOMAIN=""
+base="$(env_get BASE_URL)"
+if [ -n "$base" ]; then
+  DEFAULT_DOMAIN="${base#http://}"; DEFAULT_DOMAIN="${DEFAULT_DOMAIN#https://}"; DEFAULT_DOMAIN="${DEFAULT_DOMAIN%%/*}"
+elif [ -f nginx.conf ]; then
+  DEFAULT_DOMAIN="$(grep -m1 -E '^[[:space:]]*server_name' nginx.conf | awk '{print $2}' | tr -d ';')"
+fi
+
+configure_domain "$DEFAULT_DOMAIN"
+
+# Max upload body size (nginx client_max_body_size).
+read -r -p "Max upload size [105M]: " MAXBODY </dev/tty || MAXBODY=""
+MAXBODY="${MAXBODY:-105M}"
+
+render_nginx_conf "$DOMAIN" "$MAXBODY"
+ensure_dirs
+
+# Optional TLS certificate (re)configuration (self-signed / Let's Encrypt / own).
+if confirm "Configure / refresh the TLS certificate now?" "N"; then
+  setup_certs "$DOMAIN"
+fi
+
+# ── Validate and apply ───────────────────────────────────────────────────────
+# nginx.conf is bind-mounted, so a running container already sees the new file;
+# test it before reloading so a bad config can't take down the running nginx.
+cid="$(compose ps -q nginx 2>/dev/null || true)"
+if [ -n "$cid" ] && [ "$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null)" = "true" ]; then
+  info "Validating nginx config..."
+  if compose exec -T nginx nginx -t; then
+    info "Reloading nginx..."
+    compose exec -T nginx nginx -s reload && ok "nginx reloaded with the new config."
+  else
+    err "nginx config test FAILED — not reloading. The running config is unchanged."
+    err "Fix nginx.conf.template (or your certs) and re-run."
+    exit 1
+  fi
+else
+  warn "nginx container is not running."
+  if confirm "Start it now (docker compose up -d nginx)?" "Y"; then
+    compose up -d nginx && ok "nginx started."
+  else
+    info "nginx.conf written. Start it later with: docker compose up -d nginx"
+  fi
+fi
+
+echo
+hr
+ok "nginx configured for ${BOLD}${DOMAIN}${NC} (max upload ${MAXBODY})."
+hr
