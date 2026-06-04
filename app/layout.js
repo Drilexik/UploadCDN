@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         {children}
-        <CookieConsent matomoSiteId="2" owaSiteId="d7d8416dcabbffe05aa23048dbdd3c9a" />
+        <CookieConsent matomoSiteId="2" owaSiteId="d7d8416dcabbffe05aa23048dbdd3c9a" clarityProjectId="x1nmcs7xre" />
       </body>
     </html>
   );

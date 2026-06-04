@@ -36,34 +36,40 @@ function loadOwa(siteId) {
   document.head.appendChild(s);
 }
 
-export default function CookieConsent({ matomoSiteId, owaSiteId }) {
+function loadClarity(projectId) {
+  if (window.__clarityLoaded || !projectId) return;
+  window.__clarityLoaded = true;
+  (function (c, l, a, r, i) {
+    c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); };
+    const t = l.createElement(r); t.async = 1; t.src = "https://www.clarity.ms/tag/" + i;
+    const y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y);
+  })(window, document, "clarity", "script", projectId);
+}
+
+export default function CookieConsent({ matomoSiteId, owaSiteId, clarityProjectId }) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
     let consent = null;
-    try {
-      consent = localStorage.getItem("drilex_consent");
-    } catch (e) {}
+    try { consent = localStorage.getItem("drilex_consent"); } catch (e) {}
     if (consent === "accepted") {
       loadMatomo(matomoSiteId);
       loadOwa(owaSiteId);
+      if (clarityProjectId) loadClarity(clarityProjectId);
     } else if (consent !== "declined") {
       setShow(true);
     }
-  }, [matomoSiteId, owaSiteId]);
+  }, [matomoSiteId, owaSiteId, clarityProjectId]);
 
   const accept = () => {
-    try {
-      localStorage.setItem("drilex_consent", "accepted");
-    } catch (e) {}
+    try { localStorage.setItem("drilex_consent", "accepted"); } catch (e) {}
     loadMatomo(matomoSiteId);
     loadOwa(owaSiteId);
+    if (clarityProjectId) loadClarity(clarityProjectId);
     setShow(false);
   };
   const decline = () => {
-    try {
-      localStorage.setItem("drilex_consent", "declined");
-    } catch (e) {}
+    try { localStorage.setItem("drilex_consent", "declined"); } catch (e) {}
     setShow(false);
   };
 
@@ -72,61 +78,22 @@ export default function CookieConsent({ matomoSiteId, owaSiteId }) {
   return (
     <div
       style={{
-        position: "fixed",
-        left: 16,
-        bottom: 16,
-        zIndex: 9999,
-        maxWidth: 340,
-        background: "var(--surface, #110f1e)",
-        color: "var(--text, #ede9ff)",
-        border: "1px solid var(--border, #2a2545)",
-        borderRadius: 14,
-        padding: "16px 18px",
-        boxShadow: "0 8px 30px rgba(0,0,0,.5)",
-        fontSize: 13,
-        lineHeight: 1.5,
+        position: "fixed", left: 16, bottom: 16, zIndex: 9999, maxWidth: 340,
+        background: "var(--surface, #110f1e)", color: "var(--text, #ede9ff)",
+        border: "1px solid var(--border, #2a2545)", borderRadius: 14, padding: "16px 18px",
+        boxShadow: "0 8px 30px rgba(0,0,0,.5)", fontSize: 13, lineHeight: 1.5,
         fontFamily: "'DM Sans', ui-sans-serif, system-ui, sans-serif",
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 6 }}>🍪 Cookies &amp; soukromí</div>
       <div style={{ color: "var(--text2, #b8aee0)", marginBottom: 12 }}>
-        Používáme vlastní analytiku (Matomo &amp; OWA) ke zlepšení webu. Souhlasíš se sběrem
-        anonymních statistik?{" "}
-        <a href="/gdpr" style={{ color: "var(--accent2, #a78bfa)", textDecoration: "underline" }}>
-          Více info
-        </a>
-        .
+        Používáme vlastní analytiku (Matomo &amp; OWA) + heatmapy (Microsoft Clarity) ke zlepšení
+        webu. Souhlasíš se sběrem anonymních statistik?{" "}
+        <a href="/gdpr" style={{ color: "var(--accent2, #a78bfa)", textDecoration: "underline" }}>Více info</a>.
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          onClick={accept}
-          style={{
-            flex: 1,
-            background: "var(--accent, #8b5cf6)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 9,
-            padding: "8px 12px",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Přijmout
-        </button>
-        <button
-          onClick={decline}
-          style={{
-            flex: 1,
-            background: "transparent",
-            color: "var(--text2, #b8aee0)",
-            border: "1px solid var(--border, #2a2545)",
-            borderRadius: 9,
-            padding: "8px 12px",
-            cursor: "pointer",
-          }}
-        >
-          Odmítnout
-        </button>
+        <button onClick={accept} style={{ flex: 1, background: "var(--accent, #8b5cf6)", color: "#fff", border: "none", borderRadius: 9, padding: "8px 12px", fontWeight: 600, cursor: "pointer" }}>Přijmout</button>
+        <button onClick={decline} style={{ flex: 1, background: "transparent", color: "var(--text2, #b8aee0)", border: "1px solid var(--border, #2a2545)", borderRadius: 9, padding: "8px 12px", cursor: "pointer" }}>Odmítnout</button>
       </div>
     </div>
   );
